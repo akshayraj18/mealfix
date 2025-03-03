@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,12 +11,18 @@ import {
 import { router } from 'expo-router';
 import { auth } from '../../config/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { MaterialIcons } from '@expo/vector-icons';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
+  const [isValidPassword, setIsValidPassword] = useState(false);
+
+  useEffect(() => {
+    setIsValidPassword(password.length >= 6);
+  }, [password]);
 
   const handleSignUp = async () => {
     if (!email || !password) {
@@ -39,11 +45,11 @@ export default function LoginScreen() {
       if (userCredential.user) {
         console.log('User created successfully:', userCredential.user.uid);
         Alert.alert(
-          'Success',
-          'Account created successfully! Please login with your credentials.',
+          '🎉 Welcome to MealFix!',
+          'Your account has been created successfully. Please log in to continue.',
           [
             {
-              text: 'OK',
+              text: 'Continue to Login',
               onPress: () => {
                 setIsLogin(true);
                 setEmail('');
@@ -118,33 +124,60 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>{isLogin ? 'Login' : 'Sign Up'}</Text>
+      <Text style={styles.title}>{isLogin ? 'Welcome Back!' : 'Create Account'}</Text>
+      <Text style={styles.subtitle}>
+        {isLogin ? 'Login to continue' : 'Sign up to get started'}
+      </Text>
       
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        autoComplete="email"
-      />
+      <View style={styles.inputContainer}>
+        <MaterialIcons name="email" size={20} color="#666" style={styles.inputIcon} />
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          autoComplete="email"
+        />
+      </View>
       
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        autoComplete="password"
-      />
+      <View style={styles.inputContainer}>
+        <MaterialIcons name="lock" size={20} color="#666" style={styles.inputIcon} />
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoComplete="password"
+        />
+        {!isLogin && (
+          <MaterialIcons 
+            name={isValidPassword ? "check-circle" : "cancel"} 
+            size={20} 
+            color={isValidPassword ? "#4CAF50" : "#666"}
+            style={styles.validationIcon}
+          />
+        )}
+      </View>
+      
+      {!isLogin && (
+        <Text style={[
+          styles.passwordHint,
+          { color: isValidPassword ? "#4CAF50" : "#666" }
+        ]}>
+          Password must be at least 6 characters
+        </Text>
+      )}
       
       {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color="#007AFF" />
       ) : (
         <TouchableOpacity 
-          style={styles.button} 
+          style={[styles.button, !isValidPassword && !isLogin && styles.buttonDisabled]} 
           onPress={isLogin ? handleLogin : handleSignUp}
+          disabled={!isLogin && !isValidPassword}
         >
           <Text style={styles.buttonText}>
             {isLogin ? 'Login' : 'Sign Up'}
@@ -178,19 +211,43 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 10,
+    textAlign: 'center',
+    color: '#333',
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 30,
     textAlign: 'center',
   },
-  input: {
-    height: 50,
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: '#ddd',
     borderRadius: 8,
     marginBottom: 15,
     paddingHorizontal: 15,
+    height: 50,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  validationIcon: {
+    marginLeft: 10,
+  },
+  input: {
+    flex: 1,
     fontSize: 16,
+  },
+  passwordHint: {
+    fontSize: 12,
+    marginTop: -10,
+    marginBottom: 20,
+    marginLeft: 15,
   },
   button: {
     backgroundColor: '#007AFF',
@@ -199,6 +256,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 10,
+  },
+  buttonDisabled: {
+    backgroundColor: '#ccc',
   },
   buttonText: {
     color: '#fff',
