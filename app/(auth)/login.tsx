@@ -98,7 +98,7 @@ export default function LoginScreen() {
       
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       console.log('Login successful for user:', userCredential.user.email);
-      router.replace('/home');
+      router.replace('/(app)/home');
     } catch (error: any) {
       console.error('Login error details:', {
         code: error.code,
