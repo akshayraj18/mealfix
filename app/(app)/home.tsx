@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { ScrollView, TextInput, TouchableOpacity, StyleSheet, Platform, View, Animated } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { auth } from '@/config/firebase';
@@ -8,6 +8,8 @@ import { Recipe } from '@/types/recipe';
 import { DietaryPreferences } from '@/types/dietary';
 import DietaryPreferencesComponent from '@/components/DietaryPreferences';
 import { router } from 'expo-router';
+import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const HomeScreen: React.FC = () => {
   const [ingredients, setIngredients] = useState('');
@@ -19,6 +21,8 @@ const HomeScreen: React.FC = () => {
     restrictions: [],
     allergies: [],
   });
+
+  const [bounceAnim] = useState(new Animated.Value(1));
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -66,163 +70,429 @@ const HomeScreen: React.FC = () => {
     }
   };
 
+  const animateButton = () => {
+    Animated.sequence([
+      Animated.timing(bounceAnim, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(bounceAnim, {
+        toValue: 1,
+        friction: 4,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
   return (
-    <ScrollView style={styles.scrollView}>
-      <ThemedView style={styles.container}>
-        <ThemedText style={styles.greeting}>Hi {username}!</ThemedText>
-        
-        <ThemedText style={styles.label}>
-          Please input your ingredients:
-        </ThemedText>
-        
-        <TextInput
-          style={styles.input}
-          value={ingredients}
-          onChangeText={setIngredients}
-          multiline
-          placeholder="Tomato sauce, dough, pasta, basil, olives"
-          placeholderTextColor="#999"
-        />
-
-        <ThemedText style={styles.sectionTitle}>Dietary Preferences</ThemedText>
-        <DietaryPreferencesComponent
-          preferences={dietaryPreferences}
-          onUpdate={setDietaryPreferences}
-        />
-        
-        <TouchableOpacity 
-          style={styles.generateButton} 
-          onPress={handleGenerateSuggestions}
-          disabled={isLoading}
-        >
-          <ThemedText style={styles.buttonText}>
-            {isLoading ? 'GENERATING...' : 'GENERATE SUGGESTIONS'}
-          </ThemedText>
-        </TouchableOpacity>
-
-        {error && (
-          <ThemedText style={styles.errorText}>{error}</ThemedText>
-        )}
-
-        {isLoading && (
-          <ThemedText style={styles.loadingText}>
-            Generating delicious suggestions...
-          </ThemedText>
-        )}
-
-        {recipes && recipes.map((recipe, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.recipeCard}
-            onPress={() => handleRecipeSelect(recipe)}
-          >
-            <ThemedText style={styles.recipeName}>{recipe.name}</ThemedText>
-            <ThemedText style={styles.recipeInfo}>
-              Difficulty: {recipe.difficulty} • Time: {recipe.timeEstimate} mins
+    <LinearGradient
+      colors={['#1A1A1A', '#2A2A2A']}
+      style={styles.gradient}
+    >
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={styles.scrollViewContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <ThemedView style={styles.container}>
+          <View style={styles.headerContainer}>
+            <ThemedText style={styles.greeting}>Hi {username}! 👋</ThemedText>
+            <ThemedText style={styles.subtitle}>Let's cook something amazing today!</ThemedText>
+          </View>
+          
+          <View style={styles.searchSection}>
+            <ThemedText style={styles.label}>
+              What ingredients do you have?
             </ThemedText>
-            <ThemedText style={styles.recipeCost}>
-              Extra ingredients cost: ${recipe.extraIngredientsCost}
+            
+            <View style={styles.inputContainer}>
+              <MaterialIcons name="search" size={24} color="#666" style={styles.searchIcon} />
+              <TextInput
+                style={styles.input}
+                value={ingredients}
+                onChangeText={setIngredients}
+                multiline
+                placeholder="e.g., tomato sauce, dough, pasta, basil, olives"
+                placeholderTextColor="#A0A0A0"
+              />
+            </View>
+          </View>
+
+          <View style={styles.preferencesSection}>
+            <ThemedText style={styles.sectionTitle}>
+              <MaterialIcons name="restaurant" size={24} color="#FF6B6B" />
+              {" "}Dietary Preferences
             </ThemedText>
-            {recipe.dietaryInfo.restrictions.length > 0 && (
-              <ThemedText style={styles.dietaryInfo}>
-                Dietary: {recipe.dietaryInfo.restrictions.join(', ')}
+            <DietaryPreferencesComponent
+              preferences={dietaryPreferences}
+              onUpdate={setDietaryPreferences}
+            />
+          </View>
+          
+          <Animated.View style={{ transform: [{ scale: bounceAnim }] }}>
+            <TouchableOpacity 
+              style={[styles.generateButton, isLoading && styles.generateButtonDisabled]} 
+              onPress={() => {
+                animateButton();
+                handleGenerateSuggestions();
+              }}
+              disabled={isLoading}
+            >
+              <LinearGradient
+                colors={isLoading ? ['#FFB5B5', '#FFC5C5'] : ['#FF6B6B', '#FF8B8B']}
+                style={styles.buttonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <MaterialIcons name="restaurant-menu" size={24} color="#FFF" style={styles.buttonIcon} />
+                <ThemedText style={styles.buttonText}>
+                  {isLoading ? 'COOKING UP IDEAS...' : 'FIND RECIPES'}
+                </ThemedText>
+              </LinearGradient>
+            </TouchableOpacity>
+          </Animated.View>
+
+          {error && (
+            <View style={styles.errorContainer}>
+              <MaterialIcons name="error" size={20} color="#FF3B30" />
+              <ThemedText style={styles.errorText}>{error}</ThemedText>
+            </View>
+          )}
+
+          {isLoading && (
+            <View style={styles.loadingContainer}>
+              <MaterialIcons name="restaurant" size={24} color="#FFF" />
+              <ThemedText style={styles.loadingText}>
+                🧑‍🍳 Creating delicious suggestions for you...
               </ThemedText>
-            )}
-          </TouchableOpacity>
-        ))}
+            </View>
+          )}
 
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-          <ThemedText style={styles.buttonText}>Sign Out</ThemedText>
-        </TouchableOpacity>
-      </ThemedView>
-    </ScrollView>
+          {recipes && recipes.map((recipe, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.recipeCard}
+              onPress={() => handleRecipeSelect(recipe)}
+            >
+              <LinearGradient
+                colors={['#FFFFFF', '#F8F9FD']}
+                style={styles.cardGradient}
+              >
+                <View style={styles.recipeHeader}>
+                  <ThemedText style={styles.recipeName}>{recipe.name}</ThemedText>
+                  <MaterialIcons name="arrow-forward" size={24} color="#FF6B6B" />
+                </View>
+
+                <View style={styles.recipeDetails}>
+                  <View style={styles.detailItem}>
+                    <MaterialIcons name="timer" size={20} color="#666" />
+                    <ThemedText style={styles.detailText}>{recipe.timeEstimate} mins</ThemedText>
+                  </View>
+                  <View style={styles.detailDivider} />
+                  <View style={styles.detailItem}>
+                    <MaterialIcons name="school" size={20} color="#666" />
+                    <ThemedText style={styles.detailText}>{recipe.difficulty}</ThemedText>
+                  </View>
+                </View>
+
+                <View style={styles.recipeCost}>
+                  <MaterialIcons name="shopping-cart" size={20} color="#FF6B6B" />
+                  <ThemedText style={styles.costText}>
+                    ${recipe.extraIngredientsCost.toFixed(2)} for extra ingredients
+                  </ThemedText>
+                </View>
+
+                {recipe.dietaryInfo.restrictions.length > 0 && (
+                  <View style={styles.dietaryContainer}>
+                    {recipe.dietaryInfo.restrictions.map((restriction, idx) => (
+                      <View key={idx} style={styles.dietaryBadge}>
+                        <MaterialIcons name="check-circle" size={16} color="#4CAF50" />
+                        <ThemedText style={styles.dietaryText}>{restriction}</ThemedText>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          ))}
+
+          <TouchableOpacity 
+            style={styles.signOutButton} 
+            onPress={handleSignOut}
+          >
+            <LinearGradient
+              colors={['#FF3B30', '#FF5B50']}
+              style={styles.buttonGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <MaterialIcons name="logout" size={20} color="#FFF" style={styles.buttonIcon} />
+              <ThemedText style={styles.buttonText}>Sign Out</ThemedText>
+            </LinearGradient>
+          </TouchableOpacity>
+        </ThemedView>
+      </ScrollView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   scrollView: {
     flex: 1,
+  },
+  scrollViewContent: {
+    paddingBottom: 40,
   },
   container: {
     flex: 1,
     padding: 20,
   },
+  headerContainer: {
+    marginBottom: 32,
+  },
   greeting: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: 'bold',
-    marginBottom: 20,
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#E0E0E0',
+    marginTop: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  searchSection: {
+    marginBottom: 32,
   },
   label: {
-    fontSize: 16,
-    marginBottom: 10,
+    fontSize: 20,
+    marginBottom: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 20,
-    marginBottom: 10,
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  searchIcon: {
+    padding: 16,
   },
   input: {
-    height: 100,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 20,
-    textAlignVertical: 'top',
+    flex: 1,
+    minHeight: 100,
+    fontSize: 16,
+    color: '#1A1A1A',
+    paddingRight: 16,
+    paddingVertical: 16,
+  },
+  preferencesSection: {
+    marginBottom: 32,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   generateButton: {
-    backgroundColor: '#007AFF',
-    padding: 15,
-    borderRadius: 8,
+    marginBottom: 24,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FF6B6B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  buttonGradient: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    justifyContent: 'center',
+    padding: 16,
+  },
+  buttonIcon: {
+    marginRight: 8,
   },
   buttonText: {
-    color: '#fff',
+    color: '#FFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  errorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 59, 48, 0.2)',
   },
   errorText: {
-    color: 'red',
-    marginBottom: 10,
+    color: '#FF3B30',
+    fontSize: 16,
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
   },
   loadingText: {
-    textAlign: 'center',
-    marginBottom: 10,
+    color: '#FFFFFF',
+    fontSize: 16,
+    marginLeft: 8,
+    fontWeight: '500',
   },
   recipeCard: {
-    backgroundColor: '#f5f5f5',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 15,
+    marginBottom: 20,
+    borderRadius: 20,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  cardGradient: {
+    padding: 20,
+  },
+  recipeHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   recipeName: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 5,
+    color: '#1A1A1A',
+    flex: 1,
+    marginRight: 16,
   },
-  recipeInfo: {
-    fontSize: 14,
+  recipeDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    backgroundColor: '#F7F9FC',
+    borderRadius: 12,
+    padding: 12,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  detailText: {
+    fontSize: 16,
     color: '#666',
-    marginBottom: 5,
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  detailDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: 12,
   },
   recipeCost: {
-    fontSize: 14,
-    color: '#007AFF',
-    marginBottom: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF5F5',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 12,
   },
-  dietaryInfo: {
+  costText: {
+    fontSize: 16,
+    color: '#FF6B6B',
+    marginLeft: 8,
+    fontWeight: '600',
+  },
+  dietaryContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  dietaryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F9F0',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+  },
+  dietaryText: {
     fontSize: 14,
     color: '#4CAF50',
-    fontStyle: 'italic',
+    marginLeft: 6,
+    fontWeight: '500',
   },
   signOutButton: {
-    backgroundColor: '#FF3B30',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
     marginTop: 20,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FF3B30',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
 });
 
