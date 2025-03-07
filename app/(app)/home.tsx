@@ -5,6 +5,8 @@ import { ThemedView } from '@/components/ThemedView';
 import { auth } from '@/config/firebase';
 import { generateRecipeSuggestions } from '@/services/recipeService';
 import { Recipe } from '@/types/recipe';
+import { DietaryPreferences } from '@/types/dietary';
+import DietaryPreferencesComponent from '@/components/DietaryPreferences';
 import { router } from 'expo-router';
 
 const HomeScreen: React.FC = () => {
@@ -13,6 +15,10 @@ const HomeScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [recipes, setRecipes] = useState<Recipe[] | null>(null);
   const [username, setUsername] = useState<string>('');
+  const [dietaryPreferences, setDietaryPreferences] = useState<DietaryPreferences>({
+    restrictions: [],
+    allergies: [],
+  });
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -31,7 +37,7 @@ const HomeScreen: React.FC = () => {
     setError(null);
 
     try {
-      const result = await generateRecipeSuggestions(ingredients);
+      const result = await generateRecipeSuggestions(ingredients, dietaryPreferences);
       if (result.error) {
         setError(result.error);
       } else {
@@ -77,6 +83,12 @@ const HomeScreen: React.FC = () => {
           placeholder="Tomato sauce, dough, pasta, basil, olives"
           placeholderTextColor="#999"
         />
+
+        <ThemedText style={styles.sectionTitle}>Dietary Preferences</ThemedText>
+        <DietaryPreferencesComponent
+          preferences={dietaryPreferences}
+          onUpdate={setDietaryPreferences}
+        />
         
         <TouchableOpacity 
           style={styles.generateButton} 
@@ -111,6 +123,11 @@ const HomeScreen: React.FC = () => {
             <ThemedText style={styles.recipeCost}>
               Extra ingredients cost: ${recipe.extraIngredientsCost}
             </ThemedText>
+            {recipe.dietaryInfo.restrictions.length > 0 && (
+              <ThemedText style={styles.dietaryInfo}>
+                Dietary: {recipe.dietaryInfo.restrictions.join(', ')}
+              </ThemedText>
+            )}
           </TouchableOpacity>
         ))}
 
@@ -137,6 +154,12 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 20,
     marginBottom: 10,
   },
   input: {
@@ -187,6 +210,12 @@ const styles = StyleSheet.create({
   recipeCost: {
     fontSize: 14,
     color: '#007AFF',
+    marginBottom: 5,
+  },
+  dietaryInfo: {
+    fontSize: 14,
+    color: '#4CAF50',
+    fontStyle: 'italic',
   },
   signOutButton: {
     backgroundColor: '#FF3B30',

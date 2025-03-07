@@ -10,4 +10,8 @@ export interface Recipe {
     amount: string;
   }[];
   instructions: string[];
+  dietaryInfo: {
+    restrictions: string[];
+    allergens: string[];
+  };
 } 

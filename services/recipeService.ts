@@ -1,21 +1,33 @@
 import { groq } from '@/config/groq';
 import { Recipe } from '@/types/recipe';
+import { DietaryPreferences } from '@/types/dietary';
 
 interface GenerateRecipesResponse {
   recipes: Recipe[] | null;
   error: string | null;
 }
 
-export async function generateRecipeSuggestions(ingredients: string): Promise<GenerateRecipesResponse> {
+export async function generateRecipeSuggestions(
+  ingredients: string,
+  dietaryPreferences: DietaryPreferences
+): Promise<GenerateRecipesResponse> {
   try {
+    const dietaryInfo = `
+Dietary Restrictions: ${dietaryPreferences.restrictions.join(', ') || 'None'}
+Allergies: ${dietaryPreferences.allergies.join(', ') || 'None'}
+Diet Plan: ${dietaryPreferences.dietPlan || 'None'}`;
+
     const prompt = `Given these ingredients: ${ingredients}
 
-Please suggest 3 different dishes I could make. For each dish, provide the information in this exact format:
+${dietaryInfo}
+
+Please suggest 3 different dishes I could make that respect these dietary requirements. For each dish, provide the information in this exact format:
 
 NAME: [Creative dish name]
 DIFFICULTY: [Beginner/Intermediate/Advanced]
 TIME: [Estimated minutes to prepare and cook]
 COST: [Total cost of extra ingredients needed in USD]
+DIETARY_INFO: [List of dietary restrictions and allergens this recipe is compatible with]
 CURRENT_INGREDIENTS: [List ingredients from user's input that will be used, one per line with * bullet points]
 EXTRA_INGREDIENTS: [List additional ingredients needed with their estimated costs and amounts, one per line with * bullet points, format: "* item ($X.XX for amount)"]
 INSTRUCTIONS: [Numbered list of cooking steps]
@@ -47,7 +59,11 @@ Keep the format consistent and make sure to include all sections for each recipe
       const recipe: Partial<Recipe> = {
         currentIngredients: [],
         extraIngredients: [],
-        instructions: []
+        instructions: [],
+        dietaryInfo: {
+          restrictions: [],
+          allergens: []
+        }
       };
 
       let currentSection = '';
@@ -64,6 +80,8 @@ Keep the format consistent and make sure to include all sections for each recipe
           recipe.timeEstimate = parseInt(line.replace('TIME:', '').replace('minutes', '').trim());
         } else if (line.startsWith('COST:')) {
           recipe.extraIngredientsCost = parseFloat(line.replace('COST:', '').replace('$', '').trim());
+        } else if (line.startsWith('DIETARY_INFO:')) {
+          currentSection = 'dietary';
         } else if (line.startsWith('CURRENT_INGREDIENTS:')) {
           currentSection = 'current';
         } else if (line.startsWith('EXTRA_INGREDIENTS:')) {
@@ -90,6 +108,14 @@ Keep the format consistent and make sure to include all sections for each recipe
                 amount: 'unknown'
               });
             }
+          } else if (currentSection === 'dietary') {
+            // Parse dietary info into restrictions and allergens
+            const dietaryItem = item.toLowerCase();
+            if (dietaryItem.includes('free') || dietaryItem.includes('vegetarian') || dietaryItem.includes('vegan')) {
+              recipe.dietaryInfo?.restrictions.push(dietaryItem);
+            } else {
+              recipe.dietaryInfo?.allergens.push(dietaryItem);
+            }
           }
         } else if (line.match(/^\d+\./)) {
           if (currentSection === 'instructions') {
@@ -106,7 +132,8 @@ Keep the format consistent and make sure to include all sections for each recipe
         name: recipe.name,
         instructionsCount: recipe.instructions?.length || 0,
         currentIngredientsCount: recipe.currentIngredients?.length || 0,
-        extraIngredientsCount: recipe.extraIngredients?.length || 0
+        extraIngredientsCount: recipe.extraIngredients?.length || 0,
+        dietaryInfo: recipe.dietaryInfo
       }));
 
       return recipe as Recipe;
