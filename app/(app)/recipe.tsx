@@ -4,6 +4,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Recipe } from '@/types/recipe';
+import { MaterialIcons } from '@expo/vector-icons';
 
 export default function RecipePage() {
   const params = useLocalSearchParams<{ recipe: string }>();
@@ -21,6 +22,34 @@ export default function RecipePage() {
 
   const handleBackPress = () => {
     router.back();
+  };
+
+  const renderDietaryBadges = () => {
+    if (!recipe.dietaryInfo.restrictions.length && !recipe.dietaryInfo.allergens.length) {
+      return null;
+    }
+
+    return (
+      <View style={styles.dietarySection}>
+        <ThemedText style={styles.sectionTitle}>Dietary Information</ThemedText>
+        <View style={styles.badgesContainer}>
+          {recipe.dietaryInfo.restrictions.map((restriction, index) => (
+            <View key={`restriction-${index}`} style={styles.badge}>
+              <MaterialIcons name="restaurant-menu" size={16} color="#4CAF50" />
+              <ThemedText style={styles.badgeText}>{restriction}</ThemedText>
+            </View>
+          ))}
+          {recipe.dietaryInfo.allergens.map((allergen, index) => (
+            <View key={`allergen-${index}`} style={[styles.badge, styles.allergenBadge]}>
+              <MaterialIcons name="warning" size={16} color="#FF3B30" />
+              <ThemedText style={[styles.badgeText, styles.allergenText]}>
+                {allergen} Free
+              </ThemedText>
+            </View>
+          ))}
+        </View>
+      </View>
+    );
   };
 
   return (
@@ -58,6 +87,9 @@ export default function RecipePage() {
               Extra Ingredients Cost: ${recipe.extraIngredientsCost}
             </ThemedText>
           </View>
+
+          {/* Dietary Information */}
+          {renderDietaryBadges()}
 
           {/* Current Ingredients */}
           <View style={styles.section}>
@@ -189,6 +221,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 8,
     color: '#000',
+  },
+  dietarySection: {
+    marginBottom: 20,
+  },
+  badgesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#f0f0f0',
+  },
+  allergenBadge: {
+    backgroundColor: '#FFF3F3',
+  },
+  badgeText: {
+    fontSize: 14,
+    color: '#666',
+    marginLeft: 4,
+  },
+  allergenText: {
+    color: '#FF3B30',
   },
   section: {
     marginBottom: 20,
