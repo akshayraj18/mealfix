@@ -13,7 +13,7 @@ const RecipeSuggestions: React.FC<RecipeSuggestionsProps> = ({ ingredients, isLo
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#FF8C00" />
+        <ActivityIndicator size="large" color="#FF0000" />
         <ThemedText style={styles.loadingText}>Generating delicious suggestions...</ThemedText>
       </View>
     );
@@ -42,16 +42,16 @@ const styles = StyleSheet.create({
   container: {
     marginTop: 20,
     padding: 15,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: '#FFFFFF',
     borderRadius: 8,
   },
   loadingText: {
     marginTop: 10,
     textAlign: 'center',
-    color: '#666',
+    color: '#666666',
   },
   errorText: {
-    color: '#FF3B30',
+    color: '#FF0000',
     textAlign: 'center',
   },
   suggestions: {
