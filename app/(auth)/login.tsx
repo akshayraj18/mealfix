@@ -7,11 +7,14 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Platform,
+  Animated,
 } from 'react-native';
 import { router } from 'expo-router';
 import { auth } from '../../config/firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -19,10 +22,26 @@ export default function LoginScreen() {
   const [loading, setLoading] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [isValidPassword, setIsValidPassword] = useState(false);
+  const [bounceAnim] = useState(new Animated.Value(1));
 
   useEffect(() => {
     setIsValidPassword(password.length >= 6);
   }, [password]);
+
+  const animateButton = () => {
+    Animated.sequence([
+      Animated.timing(bounceAnim, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.spring(bounceAnim, {
+        toValue: 1,
+        friction: 4,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
   const handleSignUp = async () => {
     if (!email || !password) {
@@ -123,154 +142,261 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{isLogin ? 'Welcome Back!' : 'Create Account'}</Text>
-      <Text style={styles.subtitle}>
-        {isLogin ? 'Login to continue' : 'Sign up to get started'}
-      </Text>
-      
-      <View style={styles.inputContainer}>
-        <MaterialIcons name="email" size={20} color="#666" style={styles.inputIcon} />
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
-        />
-      </View>
-      
-      <View style={styles.inputContainer}>
-        <MaterialIcons name="lock" size={20} color="#666" style={styles.inputIcon} />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoComplete="password"
-        />
-        {!isLogin && (
-          <MaterialIcons 
-            name={isValidPassword ? "check-circle" : "cancel"} 
-            size={20} 
-            color={isValidPassword ? "#4CAF50" : "#666"}
-            style={styles.validationIcon}
-          />
-        )}
-      </View>
-      
-      {!isLogin && (
-        <Text style={[
-          styles.passwordHint,
-          { color: isValidPassword ? "#4CAF50" : "#666" }
-        ]}>
-          Password must be at least 6 characters
-        </Text>
-      )}
-      
-      {loading ? (
-        <ActivityIndicator size="large" color="#007AFF" />
-      ) : (
-        <TouchableOpacity 
-          style={[styles.button, !isValidPassword && !isLogin && styles.buttonDisabled]} 
-          onPress={isLogin ? handleLogin : handleSignUp}
-          disabled={!isLogin && !isValidPassword}
-        >
-          <Text style={styles.buttonText}>
-            {isLogin ? 'Login' : 'Sign Up'}
+    <LinearGradient
+      colors={['#F7F9FC', '#E8EEF9']}
+      style={styles.gradient}
+    >
+      <View style={styles.container}>
+        <View style={styles.headerContainer}>
+          <Text style={styles.title}>{isLogin ? 'Welcome Back! 👋' : 'Create Account 🎉'}</Text>
+          <Text style={styles.subtitle}>
+            {isLogin ? 'Login to continue cooking' : 'Sign up to start your culinary journey'}
           </Text>
-        </TouchableOpacity>
-      )}
-      
-      <TouchableOpacity
-        onPress={() => {
-          setIsLogin(!isLogin);
-          setEmail('');
-          setPassword('');
-        }}
-        style={styles.toggleButton}
-      >
-        <Text style={styles.toggleText}>
-          {isLogin
-            ? "Don't have an account? Sign Up"
-            : 'Already have an account? Login'}
-        </Text>
-      </TouchableOpacity>
-    </View>
+        </View>
+        
+        <View style={styles.formContainer}>
+          <View style={styles.inputContainer}>
+            <MaterialIcons name="email" size={24} color="#666" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#A0A0A0"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              autoComplete="email"
+            />
+          </View>
+          
+          <View style={styles.inputContainer}>
+            <MaterialIcons name="lock" size={24} color="#666" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#A0A0A0"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoComplete="password"
+            />
+            {!isLogin && (
+              <MaterialIcons 
+                name={isValidPassword ? "check-circle" : "cancel"} 
+                size={24} 
+                color={isValidPassword ? "#4CAF50" : "#666"}
+                style={styles.validationIcon}
+              />
+            )}
+          </View>
+          
+          {!isLogin && (
+            <View style={styles.passwordHintContainer}>
+              <MaterialIcons 
+                name={isValidPassword ? "check-circle" : "info"} 
+                size={16} 
+                color={isValidPassword ? "#4CAF50" : "#666"}
+              />
+              <Text style={[
+                styles.passwordHint,
+                { color: isValidPassword ? "#4CAF50" : "#666" }
+              ]}>
+                Password must be at least 6 characters
+              </Text>
+            </View>
+          )}
+          
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#FF6B6B" />
+              <Text style={styles.loadingText}>
+                {isLogin ? 'Logging in...' : 'Creating your account...'}
+              </Text>
+            </View>
+          ) : (
+            <Animated.View style={{ transform: [{ scale: bounceAnim }] }}>
+              <TouchableOpacity 
+                style={[styles.button, !isValidPassword && !isLogin && styles.buttonDisabled]} 
+                onPress={() => {
+                  animateButton();
+                  isLogin ? handleLogin() : handleSignUp();
+                }}
+                disabled={!isLogin && !isValidPassword}
+              >
+                <LinearGradient
+                  colors={['#FF6B6B', '#FF8B8B']}
+                  style={styles.buttonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <MaterialIcons 
+                    name={isLogin ? "login" : "person-add"} 
+                    size={24} 
+                    color="#FFF" 
+                    style={styles.buttonIcon}
+                  />
+                  <Text style={styles.buttonText}>
+                    {isLogin ? 'Login' : 'Sign Up'}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+          )}
+          
+          <TouchableOpacity
+            onPress={() => {
+              setIsLogin(!isLogin);
+              setEmail('');
+              setPassword('');
+            }}
+            style={styles.toggleButton}
+          >
+            <Text style={styles.toggleText}>
+              {isLogin
+                ? "Don't have an account? Sign Up"
+                : 'Already have an account? Login'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: '#fff',
+  },
+  headerContainer: {
+    marginBottom: 40,
   },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 12,
     textAlign: 'center',
-    color: '#333',
+    color: '#1A1A1A',
+    letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#666',
-    marginBottom: 30,
     textAlign: 'center',
+  },
+  formContainer: {
+    backgroundColor: '#FFFFFF',
+    padding: 24,
+    borderRadius: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    marginBottom: 15,
-    paddingHorizontal: 15,
-    height: 50,
+    backgroundColor: '#F7F9FC',
+    borderRadius: 12,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    height: 56,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   inputIcon: {
-    marginRight: 10,
+    marginRight: 12,
   },
   validationIcon: {
-    marginLeft: 10,
+    marginLeft: 12,
   },
   input: {
     flex: 1,
     fontSize: 16,
+    color: '#1A1A1A',
+  },
+  passwordHintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: -8,
+    marginBottom: 20,
+    marginLeft: 16,
   },
   passwordHint: {
-    fontSize: 12,
-    marginTop: -10,
-    marginBottom: 20,
-    marginLeft: 15,
+    fontSize: 14,
+    marginLeft: 8,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
   },
   button: {
-    backgroundColor: '#007AFF',
-    height: 50,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#FF6B6B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   buttonDisabled: {
-    backgroundColor: '#ccc',
+    opacity: 0.6,
+  },
+  buttonGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  buttonIcon: {
+    marginRight: 8,
   },
   buttonText: {
-    color: '#fff',
+    color: '#FFF',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   toggleButton: {
     marginTop: 20,
     alignItems: 'center',
   },
   toggleText: {
-    color: '#007AFF',
-    fontSize: 14,
+    fontSize: 16,
+    color: '#FF6B6B',
+    fontWeight: '600',
   },
 }); 
