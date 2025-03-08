@@ -87,7 +87,7 @@ const HomeScreen: React.FC = () => {
 
   return (
     <LinearGradient
-      colors={['#1A1A1A', '#2A2A2A']}
+      colors={['#FFA07A', '#FFA07A']}
       style={styles.gradient}
     >
       <ScrollView 
@@ -107,21 +107,21 @@ const HomeScreen: React.FC = () => {
             </ThemedText>
             
             <View style={styles.inputContainer}>
-              <MaterialIcons name="search" size={24} color="#666" style={styles.searchIcon} />
+              <MaterialIcons name="search" size={24} color="#888" style={styles.searchIcon} />
               <TextInput
                 style={styles.input}
                 value={ingredients}
                 onChangeText={setIngredients}
                 multiline
                 placeholder="e.g., tomato sauce, dough, pasta, basil, olives"
-                placeholderTextColor="#A0A0A0"
+                placeholderTextColor="#C0C0C0"
               />
             </View>
           </View>
 
           <View style={styles.preferencesSection}>
             <ThemedText style={styles.sectionTitle}>
-              <MaterialIcons name="restaurant" size={24} color="#FF6B6B" />
+              <MaterialIcons name="restaurant" size={24} color="#FFB6B6" />
               {" "}Dietary Preferences
             </ThemedText>
             <DietaryPreferencesComponent
@@ -132,7 +132,7 @@ const HomeScreen: React.FC = () => {
           
           <Animated.View style={{ transform: [{ scale: bounceAnim }] }}>
             <TouchableOpacity 
-              style={[styles.generateButton, isLoading && styles.generateButtonDisabled]} 
+              style={[styles.generateButton, isLoading && { opacity: 0.5 }]}
               onPress={() => {
                 animateButton();
                 handleGenerateSuggestions();
@@ -186,12 +186,12 @@ const HomeScreen: React.FC = () => {
 
                 <View style={styles.recipeDetails}>
                   <View style={styles.detailItem}>
-                    <MaterialIcons name="timer" size={20} color="#666" />
+                    <MaterialIcons name="timer" size={20} color="#888" />
                     <ThemedText style={styles.detailText}>{recipe.timeEstimate} mins</ThemedText>
                   </View>
                   <View style={styles.detailDivider} />
                   <View style={styles.detailItem}>
-                    <MaterialIcons name="school" size={20} color="#666" />
+                    <MaterialIcons name="school" size={20} color="#888" />
                     <ThemedText style={styles.detailText}>{recipe.difficulty}</ThemedText>
                   </View>
                 </View>
@@ -222,7 +222,7 @@ const HomeScreen: React.FC = () => {
             onPress={handleSignOut}
           >
             <LinearGradient
-              colors={['#FF3B30', '#FF5B50']}
+              colors={['#FF6B6B', '#FF8B8B']}
               style={styles.buttonGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -435,7 +435,7 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 16,
-    color: '#666',
+    color: '#888',
     marginLeft: 8,
     fontWeight: '500',
   },
