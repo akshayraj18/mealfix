@@ -112,13 +112,13 @@ export default function DietaryPreferencesComponent({
       <Text style={styles.sectionTitle}>Allergies</Text>
       <View style={styles.allergiesContainer}>
         {preferences.allergies.map((allergy) => (
-          <View key={allergy} style={styles.allergyChip}>
-            <Text style={styles.allergyText}>{allergy}</Text>
+          <View key={allergy} style={[styles.allergyChip, styles.selectedChip]}>
+            <Text style={[styles.restrictionText, styles.selectedText]}>{allergy}</Text>
             <TouchableOpacity
               onPress={() => removeAllergy(allergy)}
               style={styles.removeButton}
             >
-              <MaterialIcons name="close" size={16} color="#666" />
+              <MaterialIcons name="close" size={16} color="#fff" />
             </TouchableOpacity>
           </View>
         ))}
@@ -139,13 +139,13 @@ export default function DietaryPreferencesComponent({
       <Text style={styles.sectionTitle}>Diet Plan</Text>
       <View style={styles.dietPlanContainer}>
         {preferences.dietPlan ? (
-          <View style={styles.dietPlanChip}>
-            <Text style={styles.dietPlanText}>{preferences.dietPlan}</Text>
+          <View style={[styles.dietPlanChip, styles.selectedChip]}>
+            <Text style={[styles.restrictionText, styles.selectedText]}>{preferences.dietPlan}</Text>
             <TouchableOpacity
               onPress={() => onUpdate({ ...preferences, dietPlan: undefined })}
               style={styles.removeButton}
             >
-              <MaterialIcons name="close" size={16} color="#666" />
+              <MaterialIcons name="close" size={16} color="#fff" />
             </TouchableOpacity>
           </View>
         ) : (
@@ -203,6 +203,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   selectedText: {
+    fontSize: 14,
     color: '#fff',
   },
   checkIcon: {
@@ -222,10 +223,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     marginRight: 8,
     marginBottom: 8,
-  },
-  allergyText: {
-    fontSize: 14,
-    color: '#666',
   },
   removeButton: {
     marginLeft: 4,
@@ -263,13 +260,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
     backgroundColor: '#f0f0f0',
-  },
-  dietPlanText: {
-    fontSize: 14,
-    color: '#666',
+    alignSelf: 'flex-start',
   },
   addDietPlanContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-}); 
+});
+
