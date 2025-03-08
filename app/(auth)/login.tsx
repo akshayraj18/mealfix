@@ -17,6 +17,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function LoginScreen() {
+  const [firstName, setFirstName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -44,7 +45,7 @@ export default function LoginScreen() {
   };
 
   const handleSignUp = async () => {
-    if (!email || !password) {
+    if (!email || !password || !firstName) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
@@ -59,7 +60,7 @@ export default function LoginScreen() {
       console.log('Starting sign up process for:', email);
       
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      console.log('User credential received:', userCredential);
+      console.log('User credential received:', userCredential.user.uid);
       
       if (userCredential.user) {
         console.log('User created successfully:', userCredential.user.uid);
@@ -155,6 +156,20 @@ export default function LoginScreen() {
         </View>
         
         <View style={styles.formContainer}>
+          {!isLogin && (
+              <View style={styles.inputContainer}>
+                <MaterialIcons name="person" size={24} color="#666" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="First Name"
+                  placeholderTextColor="#A0A0A0"
+                  value={firstName}
+                  onChangeText={setFirstName}
+                  autoCapitalize="words"
+                />
+              </View>
+            )}
+
           <View style={styles.inputContainer}>
             <MaterialIcons name="email" size={24} color="#666" style={styles.inputIcon} />
             <TextInput
