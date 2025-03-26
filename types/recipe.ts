@@ -14,4 +14,14 @@ export interface Recipe {
     restrictions: string[];
     allergens: string[];
   };
+  nutritionInfo: {
+    calories: number;
+    protein: number;
+    fat: number;
+    carbs: number;
+    fiber: number;
+    sugar: number;
+    sodium: number;
+    servings: number;
+  };
 } 

@@ -28,6 +28,15 @@ DIFFICULTY: [Beginner/Intermediate/Advanced]
 TIME: [Estimated minutes to prepare and cook]
 COST: [Total cost of extra ingredients needed in USD]
 DIETARY_INFO: [List of dietary restrictions and allergens this recipe is compatible with]
+NUTRITION_INFO: [Nutritional breakdown in the following format:]
+* Calories: [total calories per serving]
+* Protein: [grams of protein per serving]
+* Fat: [grams of fat per serving]
+* Carbs: [grams of carbohydrates per serving]
+* Fiber: [grams of fiber per serving]
+* Sugar: [grams of sugar per serving]
+* Sodium: [milligrams of sodium per serving]
+* Servings: [number of servings this recipe makes]
 CURRENT_INGREDIENTS: [List ingredients from user's input that will be used, one per line with * bullet points]
 EXTRA_INGREDIENTS: [List additional ingredients needed with their estimated costs and amounts, one per line with * bullet points, format: "* item ($X.XX for amount)"]
 INSTRUCTIONS: [Numbered list of cooking steps]
@@ -63,6 +72,16 @@ Keep the format consistent and make sure to include all sections for each recipe
         dietaryInfo: {
           restrictions: [],
           allergens: []
+        },
+        nutritionInfo: {
+          calories: 0,
+          protein: 0,
+          fat: 0,
+          carbs: 0,
+          fiber: 0,
+          sugar: 0,
+          sodium: 0,
+          servings: 1
         }
       };
 
@@ -82,6 +101,8 @@ Keep the format consistent and make sure to include all sections for each recipe
           recipe.extraIngredientsCost = parseFloat(line.replace('COST:', '').replace('$', '').trim());
         } else if (line.startsWith('DIETARY_INFO:')) {
           currentSection = 'dietary';
+        } else if (line.startsWith('NUTRITION_INFO:')) {
+          currentSection = 'nutrition';
         } else if (line.startsWith('CURRENT_INGREDIENTS:')) {
           currentSection = 'current';
         } else if (line.startsWith('EXTRA_INGREDIENTS:')) {
@@ -115,6 +136,25 @@ Keep the format consistent and make sure to include all sections for each recipe
               recipe.dietaryInfo?.restrictions.push(dietaryItem);
             } else {
               recipe.dietaryInfo?.allergens.push(dietaryItem);
+            }
+          } else if (currentSection === 'nutrition') {
+            // Parse nutrition info
+            if (item.startsWith('Calories:')) {
+              recipe.nutritionInfo!.calories = parseInt(item.replace('Calories:', '').trim());
+            } else if (item.startsWith('Protein:')) {
+              recipe.nutritionInfo!.protein = parseInt(item.replace('Protein:', '').replace('g', '').trim());
+            } else if (item.startsWith('Fat:')) {
+              recipe.nutritionInfo!.fat = parseInt(item.replace('Fat:', '').replace('g', '').trim());
+            } else if (item.startsWith('Carbs:')) {
+              recipe.nutritionInfo!.carbs = parseInt(item.replace('Carbs:', '').replace('g', '').trim());
+            } else if (item.startsWith('Fiber:')) {
+              recipe.nutritionInfo!.fiber = parseInt(item.replace('Fiber:', '').replace('g', '').trim());
+            } else if (item.startsWith('Sugar:')) {
+              recipe.nutritionInfo!.sugar = parseInt(item.replace('Sugar:', '').replace('g', '').trim());
+            } else if (item.startsWith('Sodium:')) {
+              recipe.nutritionInfo!.sodium = parseInt(item.replace('Sodium:', '').replace('mg', '').trim());
+            } else if (item.startsWith('Servings:')) {
+              recipe.nutritionInfo!.servings = parseInt(item.replace('Servings:', '').trim());
             }
           }
         } else if (line.match(/^\d+\./)) {

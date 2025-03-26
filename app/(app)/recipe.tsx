@@ -6,6 +6,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { Recipe } from '@/types/recipe';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import NutritionInfo from '@/components/NutritionInfo';
 
 export default function RecipePage() {
   const params = useLocalSearchParams<{ recipe: string }>();
@@ -127,6 +128,11 @@ export default function RecipePage() {
 
             {/* Dietary Information */}
             {renderDietaryBadges()}
+
+            {/* Nutrition Information - NEW SECTION */}
+            {recipe.nutritionInfo && (
+              <NutritionInfo nutritionInfo={recipe.nutritionInfo} />
+            )}
 
             {/* Current Ingredients */}
             <View style={styles.section}>
