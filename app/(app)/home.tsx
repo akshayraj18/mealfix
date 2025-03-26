@@ -186,13 +186,24 @@ const HomeScreen: React.FC = () => {
 
                 <View style={styles.recipeDetails}>
                   <View style={styles.detailItem}>
-                    <MaterialIcons name="timer" size={20} color="#888" />
+                    <MaterialIcons name="timer" size={20} color="#666" />
                     <ThemedText style={styles.detailText}>{recipe.timeEstimate} mins</ThemedText>
                   </View>
                   <View style={styles.detailDivider} />
                   <View style={styles.detailItem}>
-                    <MaterialIcons name="school" size={20} color="#888" />
+                    <MaterialIcons name="school" size={20} color="#666" />
                     <ThemedText style={styles.detailText}>{recipe.difficulty}</ThemedText>
+                  </View>
+                </View>
+
+                <View style={styles.nutritionPreview}>
+                  <View style={styles.nutritionItem}>
+                    <MaterialIcons name="local-fire-department" size={16} color="#FF6B6B" />
+                    <ThemedText style={styles.nutritionText}>{recipe.nutritionInfo.calories} cal</ThemedText>
+                  </View>
+                  <View style={styles.nutritionItem}>
+                    <MaterialIcons name="fitness-center" size={16} color="#4CAF50" />
+                    <ThemedText style={styles.nutritionText}>{recipe.nutritionInfo.protein}g protein</ThemedText>
                   </View>
                 </View>
 
@@ -476,6 +487,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4CAF50',
     marginLeft: 6,
+    fontWeight: '500',
+  },
+  nutritionPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  nutritionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  nutritionText: {
+    fontSize: 16,
+    color: '#888',
+    marginLeft: 8,
     fontWeight: '500',
   },
   signOutButton: {
