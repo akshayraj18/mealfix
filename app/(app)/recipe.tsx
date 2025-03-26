@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Platform } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView, Platform, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -7,10 +7,53 @@ import { Recipe } from '@/types/recipe';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import NutritionInfo from '@/components/NutritionInfo';
+import { saveRecipe, isRecipeSaved, deleteRecipe } from '@/services/savedRecipesService';
 
 export default function RecipePage() {
   const params = useLocalSearchParams<{ recipe: string }>();
   const recipe: Recipe = params.recipe ? JSON.parse(params.recipe) : null;
+  const [isSaved, setIsSaved] = useState(false);
+  const [savedRecipeId, setSavedRecipeId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    checkIfRecipeIsSaved();
+  }, []);
+
+  const checkIfRecipeIsSaved = async () => {
+    if (!recipe) return;
+    
+    try {
+      const recipeId = await isRecipeSaved(recipe.name);
+      setIsSaved(!!recipeId);
+      setSavedRecipeId(recipeId);
+    } catch (error) {
+      console.error('Error checking if recipe is saved:', error);
+    }
+  };
+
+  const handleSaveRecipe = async () => {
+    if (!recipe) return;
+    
+    setLoading(true);
+    try {
+      if (isSaved && savedRecipeId) {
+        await deleteRecipe(savedRecipeId);
+        setIsSaved(false);
+        setSavedRecipeId(null);
+        Alert.alert('Success', 'Recipe removed from your saved recipes');
+      } else {
+        const recipeId = await saveRecipe(recipe);
+        setIsSaved(true);
+        setSavedRecipeId(recipeId);
+        Alert.alert('Success', 'Recipe saved to your collection!');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (!recipe) {
     return (
@@ -95,6 +138,17 @@ export default function RecipePage() {
           <ThemedText style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
             {recipe.name}
           </ThemedText>
+          <TouchableOpacity 
+            style={styles.saveButton}
+            onPress={handleSaveRecipe}
+            disabled={loading}
+          >
+            <MaterialIcons 
+              name={isSaved ? "bookmark" : "bookmark-outline"} 
+              size={28} 
+              color={isSaved ? "#FF6B6B" : "#666"} 
+            />
+          </TouchableOpacity>
         </View>
 
         {/* Scrollable Content */}
@@ -129,7 +183,7 @@ export default function RecipePage() {
             {/* Dietary Information */}
             {renderDietaryBadges()}
 
-            {/* Nutrition Information - NEW SECTION */}
+            {/* Nutrition Information */}
             {recipe.nutritionInfo && (
               <NutritionInfo nutritionInfo={recipe.nutritionInfo} />
             )}
@@ -197,24 +251,6 @@ export default function RecipePage() {
                 <ThemedText style={styles.emptyText}>No instructions available</ThemedText>
               )}
             </View>
-
-            {/* Add to Made Recipes Button */}
-            <TouchableOpacity 
-              style={styles.addButton}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={['#FF6B6B', '#FF8B8B']}
-                style={styles.buttonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <MaterialIcons name="bookmark-add" size={24} color="#FFF" style={styles.buttonIcon} />
-                <ThemedText style={styles.addButtonText}>
-                  SAVE TO MY RECIPES
-                </ThemedText>
-              </LinearGradient>
-            </TouchableOpacity>
           </ThemedView>
         </ScrollView>
       </LinearGradient>
@@ -257,6 +293,9 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
     color: '#1A1A1A',
+  },
+  saveButton: {
+    padding: 8,
   },
   scrollView: {
     flex: 1,
@@ -411,37 +450,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
     fontStyle: 'italic',
-  },
-  addButton: {
-    marginTop: 8,
-    borderRadius: 16,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#FF6B6B',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  buttonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-  },
-  buttonIcon: {
-    marginRight: 8,
-  },
-  addButtonText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 1,
   },
   defaultText: {
     fontSize: 18,
