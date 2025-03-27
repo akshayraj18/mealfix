@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import DietaryPreferencesComponent from '../../components/DietaryPreferences';
 import { DietaryPreferences } from '../../types/dietary';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logEvent, RecipeEvents } from '@/config/firebase';
 
 const DIETARY_PREFERENCES_KEY = '@dietary_preferences';
 
@@ -12,10 +13,19 @@ export default function PreferencesScreen() {
     restrictions: [],
     allergies: [],
   });
+  const [screenStartTime] = useState(Date.now());
 
   useEffect(() => {
     loadPreferences();
-  }, []);
+    return () => {
+      // Log screen time when component unmounts
+      const timeSpent = Math.round((Date.now() - screenStartTime) / 1000); // Convert to seconds
+      logEvent(RecipeEvents.SCREEN_TIME, {
+        screen: 'preferences',
+        timeSpentSeconds: timeSpent
+      });
+    };
+  }, [screenStartTime]);
 
   const loadPreferences = async () => {
     try {

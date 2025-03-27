@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { DietaryRestriction, DietaryPreferences } from '../types/dietary';
+import { logEvent, RecipeEvents } from '@/config/firebase';
 
 interface DietaryPreferencesProps {
   preferences: DietaryPreferences;
@@ -44,9 +45,18 @@ export default function DietaryPreferencesComponent({
   const [newDietPlan, setNewDietPlan] = useState('');
 
   const toggleRestriction = (restriction: DietaryRestriction) => {
-    const updatedRestrictions = preferences.restrictions.includes(restriction)
-      ? preferences.restrictions.filter(r => r !== restriction)
-      : [...preferences.restrictions, restriction];
+    const isAdding = !preferences.restrictions.includes(restriction);
+    
+    // Log the toggle event
+    logEvent(RecipeEvents.DIETARY_TOGGLE, {
+      restriction,
+      action: isAdding ? 'add' : 'remove',
+      category: 'restriction'
+    });
+
+    const updatedRestrictions = isAdding
+      ? [...preferences.restrictions, restriction]
+      : preferences.restrictions.filter(r => r !== restriction);
     
     onUpdate({
       ...preferences,
@@ -56,6 +66,13 @@ export default function DietaryPreferencesComponent({
 
   const addAllergy = () => {
     if (newAllergy.trim()) {
+      // Log the allergy addition
+      logEvent(RecipeEvents.DIETARY_TOGGLE, {
+        allergy: newAllergy.trim(),
+        action: 'add',
+        category: 'allergy'
+      });
+
       onUpdate({
         ...preferences,
         allergies: [...preferences.allergies, newAllergy.trim()],
@@ -65,6 +82,13 @@ export default function DietaryPreferencesComponent({
   };
 
   const removeAllergy = (allergy: string) => {
+    // Log the allergy removal
+    logEvent(RecipeEvents.DIETARY_TOGGLE, {
+      allergy,
+      action: 'remove',
+      category: 'allergy'
+    });
+
     onUpdate({
       ...preferences,
       allergies: preferences.allergies.filter(a => a !== allergy),
@@ -73,6 +97,13 @@ export default function DietaryPreferencesComponent({
 
   const updateDietPlan = () => {
     if (newDietPlan.trim()) {
+      // Log the diet plan update
+      logEvent(RecipeEvents.DIETARY_TOGGLE, {
+        dietPlan: newDietPlan.trim(),
+        action: 'update',
+        category: 'diet_plan'
+      });
+
       onUpdate({
         ...preferences,
         dietPlan: newDietPlan.trim(),
