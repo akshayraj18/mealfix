@@ -7,6 +7,8 @@ import { generateRecipeSuggestions } from '@/services/recipeService';
 import { Recipe } from '@/types/recipe';
 import { DietaryPreferences } from '@/types/dietary';
 import DietaryPreferencesComponent from '@/components/DietaryPreferences';
+import RecipeFiltersComponent, { RecipeFilters } from '@/components/RecipeFilters';
+import { filterRecipes, countActiveFilters } from '@/utils/recipeFilters';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -17,11 +19,22 @@ const HomeScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recipes, setRecipes] = useState<Recipe[] | null>(null);
+  const [filteredRecipes, setFilteredRecipes] = useState<Recipe[] | null>(null);
   const [username, setUsername] = useState<string>('');
   const [screenStartTime] = useState(Date.now());
   const [dietaryPreferences, setDietaryPreferences] = useState<DietaryPreferences>({
     restrictions: [],
     allergies: [],
+  });
+  
+  // Recipe filters state
+  const [recipeFilters, setRecipeFilters] = useState<RecipeFilters>({
+    timeRange: { min: null, max: null },
+    difficulty: [],
+    nutrition: {
+      calories: { min: null, max: null },
+      protein: { min: null, max: null },
+    },
   });
 
   const [bounceAnim] = useState(new Animated.Value(1));
@@ -42,6 +55,23 @@ const HomeScreen: React.FC = () => {
       });
     };
   }, [screenStartTime, recipes]);
+  
+  // Effect to apply filters when recipes or filters change
+  useEffect(() => {
+    if (recipes) {
+      const filtered = filterRecipes(recipes, recipeFilters);
+      setFilteredRecipes(filtered);
+      
+      // Log filter application
+      if (countActiveFilters(recipeFilters) > 0) {
+        logEvent(RecipeEvents.RECIPE_ERROR, {
+          action: 'apply_filters',
+          filterCount: countActiveFilters(recipeFilters),
+          resultCount: filtered.length
+        });
+      }
+    }
+  }, [recipes, recipeFilters]);
 
   const handleGenerateSuggestions = async () => {
     if (!ingredients.trim()) {
@@ -58,11 +88,19 @@ const HomeScreen: React.FC = () => {
         setError(result.error);
       } else {
         setRecipes(result.recipes);
+        // Apply initial filtering
+        setFilteredRecipes(filterRecipes(result.recipes || [], recipeFilters));
       }
     } catch (err) {
       setError('Failed to generate recipes. Please try again.');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleApplyFilters = () => {
+    if (recipes) {
+      setFilteredRecipes(filterRecipes(recipes, recipeFilters));
     }
   };
 
@@ -181,7 +219,45 @@ const HomeScreen: React.FC = () => {
             </View>
           )}
 
-          {recipes && recipes.map((recipe, index) => (
+          {filteredRecipes && filteredRecipes.length > 0 && (
+            <View style={styles.filtersContainer}>
+              <ThemedText style={styles.resultsCount}>
+                {filteredRecipes.length} {filteredRecipes.length === 1 ? 'Recipe' : 'Recipes'} Found
+              </ThemedText>
+              <RecipeFiltersComponent
+                filters={recipeFilters}
+                onUpdateFilters={setRecipeFilters}
+                onApplyFilters={handleApplyFilters}
+                activeFilterCount={countActiveFilters(recipeFilters)}
+              />
+            </View>
+          )}
+
+          {filteredRecipes && filteredRecipes.length === 0 && recipes && recipes.length > 0 && (
+            <View style={styles.noMatchesContainer}>
+              <MaterialIcons name="filter-alt-off" size={48} color="#666" />
+              <ThemedText style={styles.noMatchesText}>
+                No recipes match your filters
+              </ThemedText>
+              <TouchableOpacity 
+                style={styles.resetFiltersButton} 
+                onPress={() => {
+                  setRecipeFilters({
+                    timeRange: { min: null, max: null },
+                    difficulty: [],
+                    nutrition: {
+                      calories: { min: null, max: null },
+                      protein: { min: null, max: null },
+                    },
+                  });
+                }}
+              >
+                <ThemedText style={styles.resetFiltersText}>Reset Filters</ThemedText>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {filteredRecipes && filteredRecipes.map((recipe, index) => (
             <TouchableOpacity
               key={index}
               style={styles.recipeCard}
@@ -250,8 +326,8 @@ const HomeScreen: React.FC = () => {
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
             >
-              <MaterialIcons name="logout" size={20} color="#FFF" style={styles.buttonIcon} />
-              <ThemedText style={styles.buttonText}>Sign Out</ThemedText>
+              <MaterialIcons name="exit-to-app" size={24} color="#FFF" style={styles.buttonIcon} />
+              <ThemedText style={styles.buttonText}>SIGN OUT</ThemedText>
             </LinearGradient>
           </TouchableOpacity>
         </ThemedView>
@@ -532,6 +608,42 @@ const styles = StyleSheet.create({
         elevation: 8,
       },
     }),
+  },
+  filtersContainer: {
+    marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  resultsCount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  noMatchesContainer: {
+    marginTop: 20,
+    padding: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  noMatchesText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#666',
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  resetFiltersButton: {
+    backgroundColor: '#FF6B6B',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  resetFiltersText: {
+    color: '#FFF',
+    fontWeight: '500',
   },
 });
 

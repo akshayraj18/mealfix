@@ -6,15 +6,34 @@ import { ThemedView } from '@/components/ThemedView';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getSavedRecipes, deleteRecipe, SavedRecipe } from '@/services/savedRecipesService';
+import RecipeFiltersComponent, { RecipeFilters } from '@/components/RecipeFilters';
+import { filterSavedRecipes, countActiveFilters } from '@/utils/recipeFilters';
 
 export default function SavedRecipesScreen() {
   const [recipes, setRecipes] = useState<SavedRecipe[]>([]);
+  const [filteredRecipes, setFilteredRecipes] = useState<SavedRecipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Recipe filters state
+  const [recipeFilters, setRecipeFilters] = useState<RecipeFilters>({
+    timeRange: { min: null, max: null },
+    difficulty: [],
+    nutrition: {
+      calories: { min: null, max: null },
+      protein: { min: null, max: null },
+    },
+  });
 
   useEffect(() => {
     loadSavedRecipes();
   }, []);
+  
+  // Effect to apply filters when recipes or filters change
+  useEffect(() => {
+    const filtered = filterSavedRecipes(recipes, recipeFilters);
+    setFilteredRecipes(filtered);
+  }, [recipes, recipeFilters]);
 
   const loadSavedRecipes = async () => {
     setLoading(true);
@@ -25,12 +44,17 @@ export default function SavedRecipesScreen() {
       // Sort recipes by saved date, newest first
       savedRecipes.sort((a, b) => b.savedAt.getTime() - a.savedAt.getTime());
       setRecipes(savedRecipes);
+      setFilteredRecipes(filterSavedRecipes(savedRecipes, recipeFilters));
     } catch (error: any) {
       console.error('Error loading saved recipes:', error);
       setError(error.message || 'Failed to load saved recipes');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleApplyFilters = () => {
+    setFilteredRecipes(filterSavedRecipes(recipes, recipeFilters));
   };
 
   const handleViewRecipe = (recipe: SavedRecipe) => {
@@ -56,7 +80,9 @@ export default function SavedRecipesScreen() {
             try {
               await deleteRecipe(recipe.id);
               // Remove from local state
-              setRecipes(recipes.filter(r => r.id !== recipe.id));
+              const updatedRecipes = recipes.filter(r => r.id !== recipe.id);
+              setRecipes(updatedRecipes);
+              setFilteredRecipes(filterSavedRecipes(updatedRecipes, recipeFilters));
               Alert.alert('Success', 'Recipe removed from your collection');
             } catch (error: any) {
               Alert.alert('Error', error.message || 'Failed to remove recipe');
@@ -136,11 +162,44 @@ export default function SavedRecipesScreen() {
               </View>
             ) : (
               <View style={styles.recipesContainer}>
-                <ThemedText style={styles.recipesCount}>
-                  {recipes.length} {recipes.length === 1 ? 'Recipe' : 'Recipes'} Saved
-                </ThemedText>
+                <View style={styles.filtersRow}>
+                  <ThemedText style={styles.recipesCount}>
+                    {filteredRecipes.length} of {recipes.length} {recipes.length === 1 ? 'Recipe' : 'Recipes'} 
+                  </ThemedText>
+                  
+                  <RecipeFiltersComponent
+                    filters={recipeFilters}
+                    onUpdateFilters={setRecipeFilters}
+                    onApplyFilters={handleApplyFilters}
+                    activeFilterCount={countActiveFilters(recipeFilters)}
+                  />
+                </View>
                 
-                {recipes.map((savedRecipe) => (
+                {filteredRecipes.length === 0 && (
+                  <View style={styles.noMatchesContainer}>
+                    <MaterialIcons name="filter-alt-off" size={48} color="#666" />
+                    <ThemedText style={styles.noMatchesText}>
+                      No recipes match your filters
+                    </ThemedText>
+                    <TouchableOpacity 
+                      style={styles.resetFiltersButton} 
+                      onPress={() => {
+                        setRecipeFilters({
+                          timeRange: { min: null, max: null },
+                          difficulty: [],
+                          nutrition: {
+                            calories: { min: null, max: null },
+                            protein: { min: null, max: null },
+                          },
+                        });
+                      }}
+                    >
+                      <ThemedText style={styles.resetFiltersText}>Reset Filters</ThemedText>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                
+                {filteredRecipes.map((savedRecipe) => (
                   <View key={savedRecipe.id} style={styles.recipeCard}>
                     <LinearGradient
                       colors={['#FFFFFF', '#F8F9FD']}
@@ -162,9 +221,23 @@ export default function SavedRecipesScreen() {
                         </View>
                         <View style={styles.detailDivider} />
                         <View style={styles.detailItem}>
+                          <MaterialIcons name="school" size={20} color="#666" />
+                          <ThemedText style={styles.detailText}>
+                            {savedRecipe.recipe.difficulty}
+                          </ThemedText>
+                        </View>
+                        <View style={styles.detailDivider} />
+                        <View style={styles.detailItem}>
                           <MaterialIcons name="local-fire-department" size={20} color="#FF6B6B" />
                           <ThemedText style={styles.detailText}>
                             {savedRecipe.recipe.nutritionInfo.calories} cal
+                          </ThemedText>
+                        </View>
+                        <View style={styles.detailDivider} />
+                        <View style={styles.detailItem}>
+                          <MaterialIcons name="fitness-center" size={20} color="#4CAF50" />
+                          <ThemedText style={styles.detailText}>
+                            {savedRecipe.recipe.nutritionInfo.protein}g protein
                           </ThemedText>
                         </View>
                       </View>
@@ -322,14 +395,41 @@ const styles = StyleSheet.create({
   recipesContainer: {
     marginTop: 8,
   },
+  filtersRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   recipesCount: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#FFF',
+  },
+  noMatchesContainer: {
+    padding: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 12,
+    alignItems: 'center',
     marginBottom: 16,
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+  },
+  noMatchesText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#666',
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  resetFiltersButton: {
+    backgroundColor: '#FF6B6B',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  resetFiltersText: {
+    color: '#FFF',
+    fontWeight: '500',
   },
   recipeCard: {
     marginBottom: 16,
