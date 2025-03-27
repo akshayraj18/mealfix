@@ -104,9 +104,13 @@ export const logEvent = async (eventName: string, params?: Record<string, any>) 
   }
 };
 
-// Add this before your analytics initialization
-firebase.analytics().setAnalyticsCollectionEnabled(true);
-firebase.analytics().setDebugModeEnabled(true);
+if (Platform.OS === 'web') {
+  console.log('Analytics collection enabled for web');
+} else if (analyticsInstance) {
+  analyticsInstance.setAnalyticsCollectionEnabled(true);
+  analyticsInstance.setDebugModeEnabled(__DEV__); // Only enable debug in development
+  console.log('Analytics collection and debug mode configured for native');
+}
 
 export { auth, db };
 export default app;
