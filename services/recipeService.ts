@@ -1,6 +1,7 @@
 import { groq } from '@/config/groq';
 import { Recipe } from '@/types/recipe';
 import { DietaryPreferences } from '@/types/dietary';
+import { logEvent, RecipeEvents } from '@/config/firebase';
 
 interface GenerateRecipesResponse {
   recipes: Recipe[] | null;
@@ -12,6 +13,14 @@ export async function generateRecipeSuggestions(
   dietaryPreferences: DietaryPreferences
 ): Promise<GenerateRecipesResponse> {
   try {
+    // Log the start of recipe generation
+    await logEvent(RecipeEvents.GENERATE_RECIPE, {
+      ingredientCount: ingredients.split(',').length,
+      dietaryRestrictions: dietaryPreferences.restrictions,
+      allergies: dietaryPreferences.allergies,
+      dietPlan: dietaryPreferences.dietPlan
+    });
+
     const dietaryInfo = `
 Dietary Restrictions: ${dietaryPreferences.restrictions.join(', ') || 'None'}
 Allergies: ${dietaryPreferences.allergies.join(', ') || 'None'}
@@ -55,9 +64,20 @@ Keep the format consistent and make sure to include all sections for each recipe
       max_tokens: 1500,
     });
 
+    // Log the LLM response
+    await logEvent(RecipeEvents.LLM_RESPONSE, {
+      success: true,
+      responseLength: response.choices[0]?.message?.content?.length || 0,
+      model: "llama-3.3-70b-versatile"
+    });
+
     const content = response.choices[0]?.message?.content;
     
     if (!content) {
+      await logEvent(RecipeEvents.RECIPE_ERROR, {
+        error: 'No content in LLM response',
+        stage: 'content_check'
+      });
       return { recipes: null, error: 'Failed to generate suggestions. Please try again.' };
     }
 
@@ -179,8 +199,21 @@ Keep the format consistent and make sure to include all sections for each recipe
       return recipe as Recipe;
     });
 
+    // Log successful recipe generation with price estimates
+    await logEvent(RecipeEvents.PRICE_ESTIMATE, {
+      recipeCount: recipes.length,
+      averageCost: recipes.reduce((acc, recipe) => acc + recipe.extraIngredientsCost, 0) / recipes.length,
+      totalIngredients: recipes.reduce((acc, recipe) => acc + recipe.extraIngredients.length, 0)
+    });
+
     return { recipes, error: null };
   } catch (error: any) {
+    // Log error in recipe generation
+    await logEvent(RecipeEvents.RECIPE_ERROR, {
+      error: error.message,
+      stage: 'recipe_generation'
+    });
+    
     console.error('Error generating recipes:', error);
     return {
       recipes: null,

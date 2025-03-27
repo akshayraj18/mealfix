@@ -10,6 +10,7 @@ import DietaryPreferencesComponent from '@/components/DietaryPreferences';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { logEvent, RecipeEvents } from '@/config/firebase';
 
 const HomeScreen: React.FC = () => {
   const [ingredients, setIngredients] = useState('');
@@ -17,6 +18,7 @@ const HomeScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [recipes, setRecipes] = useState<Recipe[] | null>(null);
   const [username, setUsername] = useState<string>('');
+  const [screenStartTime] = useState(Date.now());
   const [dietaryPreferences, setDietaryPreferences] = useState<DietaryPreferences>({
     restrictions: [],
     allergies: [],
@@ -29,7 +31,17 @@ const HomeScreen: React.FC = () => {
     if (user?.email) {
       setUsername(user.email.split('@')[0]);
     }
-  }, []);
+
+    return () => {
+      // Log screen time when component unmounts
+      const timeSpent = Math.round((Date.now() - screenStartTime) / 1000); // Convert to seconds
+      logEvent(RecipeEvents.SCREEN_TIME, {
+        screen: 'home',
+        timeSpentSeconds: timeSpent,
+        hasRecipes: !!recipes?.length
+      });
+    };
+  }, [screenStartTime, recipes]);
 
   const handleGenerateSuggestions = async () => {
     if (!ingredients.trim()) {
