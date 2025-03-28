@@ -69,18 +69,19 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // Initialize web analytics if on web platform
-if (Platform.OS === 'web' && typeof window !== 'undefined') {
+if (Platform.OS === 'web') {
   try {
-    const firebaseAnalytics = require('firebase/analytics');
-    analyticsInstance = firebaseAnalytics.getAnalytics(app);
-    console.log('Firebase Analytics initialized for web');
+    // In web environments, initialize analytics if running in browser
+    if (typeof window !== 'undefined') {
+      // Use a simple require to avoid dynamic imports
+      const firebaseAnalytics = require('firebase/analytics');
+      analyticsInstance = firebaseAnalytics.getAnalytics(app);
+      console.log('Firebase Analytics initialized for web');
+    }
   } catch (error) {
     console.error('Failed to initialize Firebase Analytics for web:', error);
   }
 }
-
-// Remove or conditionally initialize analytics
-const analytics = Platform.OS === 'web' && typeof window !== 'undefined' ? getAnalytics(app) : null;
 
 // Analytics helper function with graceful degradation
 export const logEvent = async (eventName: string, params?: Record<string, any>) => {
@@ -104,6 +105,9 @@ export const logEvent = async (eventName: string, params?: Record<string, any>) 
     console.error('Failed to log analytics event:', error);
   }
 };
+
+// Add this before your analytics initialization
+const analytics = getAnalytics(app);
 
 export { auth, db };
 export default app;
