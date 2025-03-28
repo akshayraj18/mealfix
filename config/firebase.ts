@@ -4,30 +4,11 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import firebase from 'firebase/app';
-import { getAnalytics } from 'firebase/analytics';
 
 // Analytics imports
 let analyticsInstance: any = null;
 
-// Import Firebase analytics based on platform
-if (Platform.OS === 'web') {
-  // For web, we'll initialize analytics later to avoid import errors in SSR
-  console.log('Web platform detected, analytics will be initialized at runtime');
-} else {
-  // For native platforms, import directly
-  try {
-    // We use require instead of import to avoid SSR issues
-    const analytics = require('@react-native-firebase/analytics').default;
-    analyticsInstance = analytics();
-    console.log('Firebase Analytics initialized for native');
-  } catch (error) {
-    console.error('Failed to initialize Firebase Analytics for native:', error);
-  }
-}
-
 // Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyAFugF2_o5rHBcq7JE0KcvSnR8HLJ6LmCc",
   authDomain: "mealfix-66eaf.firebaseapp.com",
@@ -68,18 +49,22 @@ const auth = getAuth(app);
 // Initialize Firestore
 const db = getFirestore(app);
 
-// Initialize web analytics if on web platform
-if (Platform.OS === 'web') {
+// Initialize analytics based on platform
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
   try {
-    // In web environments, initialize analytics if running in browser
-    if (typeof window !== 'undefined') {
-      // Use a simple require to avoid dynamic imports
-      const firebaseAnalytics = require('firebase/analytics');
-      analyticsInstance = firebaseAnalytics.getAnalytics(app);
-      console.log('Firebase Analytics initialized for web');
-    }
+    const { getAnalytics } = require('firebase/analytics');
+    analyticsInstance = getAnalytics(app);
+    console.log('Firebase Analytics initialized for web');
   } catch (error) {
     console.error('Failed to initialize Firebase Analytics for web:', error);
+  }
+} else if (Platform.OS !== 'web') {
+  try {
+    const analytics = require('@react-native-firebase/analytics').default;
+    analyticsInstance = analytics();
+    console.log('Firebase Analytics initialized for native');
+  } catch (error) {
+    console.error('Failed to initialize Firebase Analytics for native:', error);
   }
 }
 
@@ -92,11 +77,9 @@ export const logEvent = async (eventName: string, params?: Record<string, any>) 
     }
 
     if (Platform.OS === 'web') {
-      // For web, use the firebase/analytics logEvent
-      const firebaseAnalytics = require('firebase/analytics');
-      firebaseAnalytics.logEvent(analyticsInstance, eventName, params);
+      const { logEvent: webLogEvent } = require('firebase/analytics');
+      webLogEvent(analyticsInstance, eventName, params);
     } else {
-      // For native, use the react-native-firebase analytics
       await analyticsInstance.logEvent(eventName, params);
     }
     
@@ -105,9 +88,6 @@ export const logEvent = async (eventName: string, params?: Record<string, any>) 
     console.error('Failed to log analytics event:', error);
   }
 };
-
-// Add this before your analytics initialization
-const analytics = getAnalytics(app);
 
 export { auth, db };
 export default app;
