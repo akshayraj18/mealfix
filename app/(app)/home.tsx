@@ -25,6 +25,7 @@ const HomeScreen: React.FC = () => {
   const [dietaryPreferences, setDietaryPreferences] = useState<DietaryPreferences>({
     restrictions: [],
     allergies: [],
+    preferences: [],
   });
   
   // Recipe filters state
