@@ -41,7 +41,11 @@ const HomeScreen: React.FC = () => {
 
   useEffect(() => {
     const user = auth.currentUser;
-    if (user?.email) {
+    if (user?.displayName) {
+      setUsername(user.displayName); // This will now use the first name
+      console.log("Used first name")
+    } else if (user?.email) {
+      // Fallback to email if displayName isn't set (for existing users)
       setUsername(user.email.split('@')[0]);
     }
 
