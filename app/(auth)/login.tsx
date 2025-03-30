@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { auth } from '../../config/firebase';
+import { updateProfile } from 'firebase/auth';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -61,12 +62,16 @@ export default function LoginScreen() {
       
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       console.log('User credential received:', userCredential.user.uid);
+
+      await updateProfile(userCredential.user, {
+        displayName: firstName
+      });
       
       if (userCredential.user) {
         console.log('User created successfully:', userCredential.user.uid);
         Alert.alert(
           '🎉 Welcome to MealFix!',
-          'Your account has been created successfully. Please log in to continue.',
+          'Hi ${firstName}! Your account has been created successfully. Please log in to continue.',
           [
             {
               text: 'Continue to Login',
@@ -114,10 +119,14 @@ export default function LoginScreen() {
 
     try {
       setLoading(true);
-      console.log('Attempting login for:', email);
-      
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      console.log('Login successful for user:', userCredential.user.email);
+      
+      // If user doesn't have a displayName set, set it from email (optional)
+      if (!userCredential.user.displayName) {
+        await updateProfile(userCredential.user, {
+          displayName: email.split('@')[0]
+        });
+      }
       router.replace('/(app)/home');
     } catch (error: any) {
       console.error('Login error details:', {
@@ -261,6 +270,7 @@ export default function LoginScreen() {
           <TouchableOpacity
             onPress={() => {
               setIsLogin(!isLogin);
+              setFirstName('');
               setEmail('');
               setPassword('');
             }}

@@ -4,24 +4,34 @@ export type DietaryRestriction =
   | 'gluten-free'
   | 'dairy-free'
   | 'nut-free'
-  | 'shellfish-free'
-  | 'soy-free'
-  | 'egg-free'
-  | 'fish-free'
-  | 'halal'
   | 'kosher'
-  | 'low-carb'
+  | 'halal'
+  | 'soy-free';
+
+export type DietaryAllergies = 
+  | 'peanuts'
+  | 'tree nuts'
+  | 'milk'
+  | 'eggs'
+  | 'shellfish'
+  | 'soy'
+  | 'wheat'
+  | 'fish';
+
+export type DietaryPlan = 
   | 'keto'
   | 'paleo'
+  | 'low-carb'
+  | 'high-protein'
   | 'mediterranean'
-  | 'low-fat'
+  | 'intermittent fasting'
   | 'low-sodium'
-  | 'diabetic-friendly';
+  | 'plant-based';
 
 export interface DietaryPreferences {
   restrictions: DietaryRestriction[];
-  allergies: string[];
-  dietPlan?: string;
+  allergies: DietaryAllergies[];
+  preferences: DietaryPlan[];
 }
 
 export interface Recipe {
@@ -32,12 +42,12 @@ export interface Recipe {
   instructions: string[];
   dietaryInfo: {
     restrictions: DietaryRestriction[];
-    allergens: string[];
-    dietPlan?: string;
+    allergens: DietaryAllergies[];
+    preferences: DietaryPlan[];
   };
   prepTime: number;
   cookTime: number;
   servings: number;
   calories: number;
   imageUrl?: string;
-} 
+}

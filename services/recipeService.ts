@@ -18,13 +18,13 @@ export async function generateRecipeSuggestions(
       ingredientCount: ingredients.split(',').length,
       dietaryRestrictions: dietaryPreferences.restrictions,
       allergies: dietaryPreferences.allergies,
-      dietPlan: dietaryPreferences.dietPlan
+      dietPlan: dietaryPreferences.preferences
     });
 
     const dietaryInfo = `
 Dietary Restrictions: ${dietaryPreferences.restrictions.join(', ') || 'None'}
 Allergies: ${dietaryPreferences.allergies.join(', ') || 'None'}
-Diet Plan: ${dietaryPreferences.dietPlan || 'None'}`;
+Diet Plan: ${dietaryPreferences.preferences || 'None'}`;
 
     const prompt = `Given these ingredients: ${ingredients}
 
@@ -48,7 +48,9 @@ NUTRITION_INFO: [Nutritional breakdown in the following format:]
 * Servings: [number of servings this recipe makes]
 CURRENT_INGREDIENTS: [List ingredients from user's input that will be used, one per line with * bullet points]
 EXTRA_INGREDIENTS: [List additional ingredients needed with their estimated costs and amounts, one per line with * bullet points, format: "* item ($X.XX for amount)"]
-INSTRUCTIONS: [Numbered list of cooking steps]
+INSTRUCTIONS: [Numbered steps of cooking steps with DETAILED directions, including time per step, warnings (e.g., 'hot oil'), and utensils needed (e.g., 'whisk').]
+
+For each step in the cooking instructions, add a "(Time: x minutes)" at the end of the step. Each step needs to be as descriptive as possible so a beginner can understand. 
 
 Keep the format consistent and make sure to include all sections for each recipe. Separate recipes with ---`;
 
