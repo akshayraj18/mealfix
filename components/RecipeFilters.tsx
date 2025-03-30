@@ -342,8 +342,10 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: 'bold',
+    color: '#1A1A1A',
+    marginBottom: 16,
   },
   closeButton: {
     padding: 8,
@@ -362,9 +364,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
+    color: '#1A1A1A',
     marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   rangeInputContainer: {
     flexDirection: 'row',
@@ -379,8 +384,8 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   rangeLabel: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 16,
+    color: '#1A1A1A',
     marginBottom: 4,
   },
   rangeTextInput: {
@@ -388,8 +393,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   rangeSeparator: {
-    paddingHorizontal: 10,
-    color: '#666',
+    fontSize: 16,
+    color: '#1A1A1A',
+    marginHorizontal: 8,
+    alignSelf: 'center',
   },
   difficultyOptions: {
     flexDirection: 'row',
@@ -412,7 +419,8 @@ const styles = StyleSheet.create({
     borderColor: '#FF6B6B',
   },
   difficultyOptionText: {
-    color: '#666',
+    color: '#1A1A1A',
+    fontSize: 16,
   },
   difficultyOptionTextSelected: {
     color: '#fff',
@@ -429,7 +437,9 @@ const styles = StyleSheet.create({
   },
   resetButtonText: {
     textAlign: 'center',
-    color: '#666',
+    color: '#1A1A1A',
+    fontSize: 16,
+    fontWeight: '500',
   },
   applyButton: {
     flex: 1,
