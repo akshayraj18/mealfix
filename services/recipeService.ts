@@ -30,7 +30,11 @@ Diet Plan: ${dietaryPreferences.preferences || 'None'}`;
 
 ${dietaryInfo}
 
-Please suggest 3 different dishes I could make that respect these dietary requirements. For each dish, provide the information in this exact format:
+Please suggest 3 different dishes I could make that respect these dietary requirements. 
+Create 2 completely unique and innovative dishes that incorporate these ingredients in unexpected ways and keep 1 as somewhat basic.
+When regenerating, all recipes should be unique, meaning the dish should not be similar in any way to the previous recipes.
+Don't just make the given ingredients as stars of the dish - find creative supporting roles for them and add plenty of extra ingredients for a complex dish.
+For each dish, provide the information in this exact format:
 
 NAME: [Creative dish name]
 DIFFICULTY: [Beginner/Intermediate/Advanced]
@@ -46,10 +50,11 @@ NUTRITION_INFO: [Nutritional breakdown in the following format:]
 * Sugar: [grams of sugar per serving]
 * Sodium: [milligrams of sodium per serving]
 * Servings: [number of servings this recipe makes]
-CURRENT_INGREDIENTS: [List ingredients from user's input that will be used, one per line with * bullet points]
-EXTRA_INGREDIENTS: [List additional ingredients needed with their estimated costs and amounts, one per line with * bullet points, format: "* item ($X.XX for amount)"]
+CURRENT_INGREDIENTS: [List ingredients from user's input that will be used, one per line with * bullet points. For each ingredient that has a common substitution, include it in parentheses after the ingredient like: "* chicken (or tofu for vegetarian)"]
+EXTRA_INGREDIENTS: [List additional ingredients needed with their estimated costs and amounts, one per line with * bullet points, format: "* item ($X.XX for amount) (or substitute for dietary needs)"]
 INSTRUCTIONS: [Numbered steps of cooking steps with DETAILED directions, including time per step, warnings (e.g., 'hot oil'), and utensils needed (e.g., 'whisk').]
 
+For each recipe, include at least one suggested substitution either in the CURRENT_INGREDIENTS or EXTRA_INGREDIENTS sections.
 For each step in the cooking instructions, add a "(Time: x minutes)" at the end of the step. Each step needs to be as descriptive as possible so a beginner can understand. 
 
 Keep the format consistent and make sure to include all sections for each recipe. Separate recipes with ---`;
