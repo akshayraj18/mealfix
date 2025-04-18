@@ -12,7 +12,9 @@ import {
   getPantryItems,
   addPantryItem,
   removePantryItem,
-} from '@/services/pantryservice'; // Adjust path if needed
+} from '@/services/pantryservice';
+import { ThemedView } from '@/components/ThemedView';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const defaultPantryItems = [
   'salt', 'pepper', 'olive oil', 'flour', 'sugar',
@@ -80,72 +82,91 @@ export default function PantryListScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.sectionTitle}>Your Pantry</Text>
-      <View style={styles.itemsContainer}>
-        {defaultPantryItems.map((item) => (
-          <TouchableOpacity
-            key={item}
-            style={[
-              styles.itemChip,
-              items.includes(item) && styles.selectedChip,
-            ]}
-            onPress={() => toggleItem(item)}
-          >
-            <Text
-              style={[
-                styles.itemText,
-                items.includes(item) && styles.selectedText,
-              ]}
-            >
-              {capitalize(item)}
-            </Text>
-            {items.includes(item) && (
-              <MaterialIcons name="check" size={16} color="#fff" style={styles.checkIcon} />
-            )}
-          </TouchableOpacity>
-        ))}
+    <SafeAreaView style={styles.safeArea}>
+      <ThemedView style={styles.container}>
+        <ScrollView>
+          {/* White box container for the pantry section */}
+          <View style={styles.whiteBoxContainer}>
+            <Text style={styles.sectionTitle}>Your Pantry</Text>
+            <View style={styles.itemsContainer}>
+              {defaultPantryItems.map((item) => (
+                <TouchableOpacity
+                  key={item}
+                  style={[
+                    styles.itemChip,
+                    items.includes(item) && styles.selectedChip,
+                  ]}
+                  onPress={() => toggleItem(item)}
+                >
+                  <Text
+                    style={[
+                      styles.itemText,
+                      items.includes(item) && styles.selectedText,
+                    ]}
+                  >
+                    {capitalize(item)}
+                  </Text>
+                  {items.includes(item) && (
+                    <MaterialIcons name="check" size={16} color="#fff" style={styles.checkIcon} />
+                  )}
+                </TouchableOpacity>
+              ))}
 
-        {items
-          .filter(i => !defaultPantryItems.includes(i))
-          .map((item) => (
-            <TouchableOpacity
-              key={item}
-              style={[styles.itemChip, styles.selectedChip]}
-              onPress={() => removeCustomItem(item)}
-            >
-              <Text style={[styles.itemText, styles.selectedText]}>{capitalize(item)}</Text>
-              <MaterialIcons name="close" size={16} color="#fff" style={styles.checkIcon} />
-            </TouchableOpacity>
-          ))}
-      </View>
+              {items
+                .filter(i => !defaultPantryItems.includes(i))
+                .map((item) => (
+                  <TouchableOpacity
+                    key={item}
+                    style={[styles.itemChip, styles.selectedChip]}
+                    onPress={() => removeCustomItem(item)}
+                  >
+                    <Text style={[styles.itemText, styles.selectedText]}>{capitalize(item)}</Text>
+                    <MaterialIcons name="close" size={16} color="#fff" style={styles.checkIcon} />
+                  </TouchableOpacity>
+                ))}
+            </View>
 
-      <View style={styles.addItemContainer}>
-        <TextInput
-          style={styles.input}
-          value={newItem}
-          onChangeText={setNewItem}
-          placeholder="Add custom pantry item"
-          onSubmitEditing={addCustomItem}
-        />
-        <TouchableOpacity onPress={addCustomItem} style={styles.addButton}>
-          <MaterialIcons name="add" size={24} color="#007AFF" />
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+            <View style={styles.addItemContainer}>
+              <TextInput
+                style={styles.input}
+                value={newItem}
+                onChangeText={setNewItem}
+                placeholder="Add custom pantry item"
+                onSubmitEditing={addCustomItem}
+              />
+              <TouchableOpacity onPress={addCustomItem} style={styles.addButton}>
+                <MaterialIcons name="add" size={24} color="#007AFF" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: '#fff',
+  },
+  whiteBoxContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginVertical: 8,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginTop: 16,
     marginBottom: 12,
     color: '#333',
   },
