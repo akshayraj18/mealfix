@@ -47,6 +47,15 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="pantry-list"
+        options={{
+          title: 'Pantry List',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="fastfood" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="recipe"
         options={{
           href: null, // Hide this screen from the tab bar

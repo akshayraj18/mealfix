@@ -2,6 +2,8 @@ import { groq } from '@/config/groq';
 import { Recipe } from '@/types/recipe';
 import { DietaryPreferences } from '@/types/dietary';
 import { logEvent, RecipeEvents } from '@/config/firebase';
+import { db, auth } from '@/config/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface GenerateRecipesResponse {
   recipes: Recipe[] | null;
@@ -13,9 +15,34 @@ export async function generateRecipeSuggestions(
   dietaryPreferences: DietaryPreferences
 ): Promise<GenerateRecipesResponse> {
   try {
-    // Log the start of recipe generation
+    // Get the current user
+    const user = auth.currentUser;
+    if (!user) {
+      console.log('No authenticated user found when generating recipes');
+    }
+    
+    let pantryItems: string[] = [];
+    
+    // Only fetch pantry items if a user is logged in
+    if (user) {
+      const PANTRY_COLLECTION = 'pantryItems';
+      const docRef = doc(db, PANTRY_COLLECTION, user.uid);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        pantryItems = (data.items || []) as string[];
+      }
+    }
+
+    // 🔹 Append pantry items if available
+    const allIngredients = pantryItems.length > 0
+      ? `${ingredients}, ${pantryItems.join(', ')}`
+      : ingredients;
+
+    // 🔹 Log start of recipe generation
     await logEvent(RecipeEvents.GENERATE_RECIPE, {
-      ingredientCount: ingredients.split(',').length,
+      ingredientCount: allIngredients.split(',').length,
       dietaryRestrictions: dietaryPreferences.restrictions,
       allergies: dietaryPreferences.allergies,
       dietPlan: dietaryPreferences.preferences
@@ -26,7 +53,7 @@ Dietary Restrictions: ${dietaryPreferences.restrictions.join(', ') || 'None'}
 Allergies: ${dietaryPreferences.allergies.join(', ') || 'None'}
 Diet Plan: ${dietaryPreferences.preferences || 'None'}`;
 
-    const prompt = `Given these ingredients: ${ingredients}
+    const prompt = `Given these ingredients: ${allIngredients}
 
 ${dietaryInfo}
 
