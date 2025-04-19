@@ -33,9 +33,6 @@ import { logEvent, DashboardEvents } from '@/lib/firebase';
 
 const navigation = [
   { name: 'Dashboard', href: '#', icon: HomeIcon, current: true },
-  { name: 'Saved Recipes', href: '#', icon: BookmarkIcon, current: false },
-  { name: 'Users', href: '#', icon: UserGroupIcon, current: false },
-  { name: 'Analytics', href: '#', icon: ChartBarIcon, current: false },
 ];
 
 export default function Dashboard() {
@@ -142,7 +139,7 @@ export default function Dashboard() {
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
           <div className="flex h-16 items-center justify-between px-4">
-            <span className="text-xl font-semibold">MealFix Dashboard</span>
+            <span className="text-xl font-semibold text-black">MealFix Dashboard</span>
             <button onClick={() => setSidebarOpen(false)}>
               <XMarkIcon className="h-6 w-6" />
             </button>
@@ -174,7 +171,7 @@ export default function Dashboard() {
       <div className="hidden lg:fixed lg:inset-y-0 lg:flex lg:w-64 lg:flex-col">
         <div className="flex min-h-0 flex-1 flex-col border-r border-gray-200 bg-white">
           <div className="flex h-16 items-center px-4">
-            <span className="text-xl font-semibold">MealFix Dashboard</span>
+            <span className="text-xl font-semibold text-black">MealFix Dashboard</span>
           </div>
           <nav className="flex-1 space-y-1 px-2 py-4">
             {navigation.map((item) => (
