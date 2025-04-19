@@ -1,12 +1,27 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
+import { Tabs, usePathname, useRouter } from 'expo-router';
+import React, { useEffect } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
+import { usePremiumFeature } from '@/context/PremiumFeatureContext';
 
 export default function AppLayout() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-
+  const { premiumEnabled } = usePremiumFeature();
+  const pathname = usePathname();
+  const router = useRouter();
+  
+  // console.log("Tab Layout Premium Status:", premiumEnabled);
+  
+  // Redirect if user tries to access premium screens when disabled
+  useEffect(() => {
+    if (!premiumEnabled) {
+      if (pathname?.includes('/saved-recipes') || pathname?.includes('/pantry-list')) {
+        router.replace('/home');
+      }
+    }
+  }, [premiumEnabled, pathname, router]);
+  
   return (
     <Tabs
       screenOptions={{
@@ -37,6 +52,7 @@ export default function AppLayout() {
           ),
         }}
       />
+      
       <Tabs.Screen
         name="saved-recipes"
         options={{
@@ -44,8 +60,10 @@ export default function AppLayout() {
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="bookmark" size={size} color={color} />
           ),
+          href: premiumEnabled ? undefined : null,
         }}
       />
+      
       <Tabs.Screen
         name="pantry-list"
         options={{
@@ -53,26 +71,14 @@ export default function AppLayout() {
           tabBarIcon: ({ color, size }) => (
             <MaterialIcons name="fastfood" size={size} color={color} />
           ),
+          href: premiumEnabled ? undefined : null,
         }}
       />
-      <Tabs.Screen
-        name="recipe"
-        options={{
-          href: null, // Hide this screen from the tab bar
-        }}
-      />
-      <Tabs.Screen
-        name="preferences"
-        options={{
-          href: null, // Hide this screen from the tab bar
-        }}
-      />
-      <Tabs.Screen
-        name="recipe/[id]"
-        options={{
-          href: null, // Hide this screen from the tab bar
-        }}
-      />
+      
+      {/* Hidden Screens */}
+      <Tabs.Screen name="recipe" options={{ href: null }} />
+      <Tabs.Screen name="preferences" options={{ href: null }} />
+      <Tabs.Screen name="recipe/[id]" options={{ href: null }} />
     </Tabs>
   );
-} 
+}
