@@ -60,23 +60,9 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
-        name="preferences"
-        options={{
-          title: 'Preferences',
-          tabBarIcon: ({ color }) => <MaterialIcons name="settings" size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
         name="recipe/[id]"
         options={{
           href: null, // Hide this screen from the tab bar
-        }}
-      />
-      <Tabs.Screen
-        name="debug"
-        options={{
-          title: 'Debug',
-          tabBarIcon: ({ color }) => <MaterialIcons name="bug-report" size={24} color={color} />,
         }}
       />
     </Tabs>

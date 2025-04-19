@@ -49,9 +49,6 @@ export async function saveRecipe(recipe: Recipe): Promise<string> {
 
     const docRef = await addDoc(collection(db, SAVED_RECIPES_COLLECTION), recipeData);
     
-    // Track the save event
-    trackRecipeSave(recipe);
-    
     return docRef.id;
   } catch (error: any) {
     console.error('Error saving recipe:', error);
