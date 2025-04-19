@@ -1,13 +1,13 @@
-import { Tabs } from 'expo-router/tabs';
+import { Tabs, usePathname, useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
-import { logAnalyticsEvent } from '@/services/analyticsService';
+import { usePremiumFeature } from '@/context/PremiumFeatureContext';
+import { logAnalyticsEvent } from '@/services/analyticsService'
 
 export default function AppLayout() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-
   // Track app initialization
   useEffect(() => {
     logAnalyticsEvent('app_initialized', {
@@ -15,7 +15,21 @@ export default function AppLayout() {
       timestamp: new Date().toISOString()
     });
   }, []);
-
+  const { premiumEnabled } = usePremiumFeature();
+  const pathname = usePathname();
+  const router = useRouter();
+  
+  // console.log("Tab Layout Premium Status:", premiumEnabled);
+  
+  // Redirect if user tries to access premium screens when disabled
+  useEffect(() => {
+    if (!premiumEnabled) {
+      if (pathname?.includes('/saved-recipes') || pathname?.includes('/pantry-list')) {
+        router.replace('/home');
+      }
+    }
+  }, [premiumEnabled, pathname, router]);
+  
   return (
     <Tabs
       screenOptions={{
@@ -44,27 +58,33 @@ export default function AppLayout() {
           tabBarIcon: ({ color }) => <MaterialIcons name="home" size={24} color={color} />,
         }}
       />
+      
       <Tabs.Screen
         name="saved-recipes"
         options={{
           title: 'Saved Recipes',
-          tabBarIcon: ({ color }) => <MaterialIcons name="bookmark" size={24} color={color} />,
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="bookmark" size={size} color={color} />
+          ),
+          href: premiumEnabled ? undefined : null,
         }}
       />
+      
       <Tabs.Screen
-        name="recipe"
+        name="pantry-list"
         options={{
-          title: 'Recipe',
-          tabBarIcon: ({ color }) => <MaterialIcons name="restaurant" size={24} color={color} />,
-          href: null, // Hide this tab, it's for viewing recipe details
+          title: 'Pantry List',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="fastfood" size={size} color={color} />
+          ),
+          href: premiumEnabled ? undefined : null,
         }}
       />
-      <Tabs.Screen
-        name="recipe/[id]"
-        options={{
-          href: null, // Hide this screen from the tab bar
-        }}
-      />
+      
+      {/* Hidden Screens */}
+      <Tabs.Screen name="recipe" options={{ href: null }} />
+      <Tabs.Screen name="preferences" options={{ href: null }} />
+      <Tabs.Screen name="recipe/[id]" options={{ href: null }} />
     </Tabs>
   );
-} 
+}

@@ -9,6 +9,7 @@ import { getSavedRecipes, deleteRecipe, SavedRecipe } from '@/services/savedReci
 import RecipeFiltersComponent, { RecipeFilters } from '@/components/RecipeFilters';
 import { filterSavedRecipes, countActiveFilters } from '@/utils/recipeFilters';
 import { trackScreenView, trackRecipeDelete, logAnalyticsEvent } from '@/services/analyticsService';
+import PremiumGuard from '@/components/premiumGuard';
 
 export default function SavedRecipesScreen() {
   const [recipes, setRecipes] = useState<SavedRecipe[]>([]);
@@ -122,7 +123,8 @@ export default function SavedRecipesScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <PremiumGuard>
+        <SafeAreaView style={styles.safeArea}>
       <LinearGradient
         colors={['#FFA07A', '#FFA07A']}
         style={styles.gradient}
@@ -302,6 +304,8 @@ export default function SavedRecipesScreen() {
         </ScrollView>
       </LinearGradient>
     </SafeAreaView>
+    </PremiumGuard>
+    
   );
 }
 
