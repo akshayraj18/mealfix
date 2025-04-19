@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, TextInput, TouchableOpacity, StyleSheet, Platform, View, Animated, Switch, Text } from 'react-native';
+import { ScrollView, TextInput, TouchableOpacity, StyleSheet, Platform, View, Animated, Switch, Text, SafeAreaView } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { auth } from '@/config/firebase';
@@ -145,217 +145,219 @@ const HomeScreen: React.FC = () => {
   };
 
   return (
-    <LinearGradient
-      colors={['#FFA07A', '#FFA07A']}
-      style={styles.gradient}
-    >
-      <ScrollView 
-        style={styles.scrollView} 
-        contentContainerStyle={styles.scrollViewContent}
-        showsVerticalScrollIndicator={false}
+    <SafeAreaView style={{ flex: 1 }}>
+      <LinearGradient
+        colors={['#FFA07A', '#FFA07A']}
+        style={styles.gradient}
       >
-        <ThemedView style={styles.container}>
-          <View style={styles.headerContainer}>
-            <ThemedText style={styles.greeting}>Hi {username}! 👋</ThemedText>
-            <ThemedText style={styles.subtitle}>Let's cook something amazing today!</ThemedText>
-          </View>
+        <ScrollView 
+          style={styles.scrollView} 
+          contentContainerStyle={styles.scrollViewContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <ThemedView style={styles.container}>
+            <View style={styles.headerContainer}>
+              <ThemedText style={styles.greeting}>Hi {username}! 👋</ThemedText>
+              <ThemedText style={styles.subtitle}>Let's cook something amazing today!</ThemedText>
+            </View>
 
-          <View style={styles.toggleContainer}>
-            <Text style={styles.toggleLabel}>Enable Premium Features</Text>
-            <Switch
-              value={premiumEnabled}
-              onValueChange={(value) => {
-                //console.log("Toggle changed to:", value);
-                setPremiumEnabled(value);
-              }}
-              trackColor={{ false: '#767577', true: '#FF8B8B' }}
-              thumbColor={premiumEnabled ? '#FF6B6B' : '#f4f3f4'}
-              ios_backgroundColor="#3e3e3e"
-            />
-          </View>
-          
-          <View style={styles.searchSection}>
-            <ThemedText style={styles.label}>
-              What ingredients do you have?
-            </ThemedText>
-            
-            <View style={styles.inputContainer}>
-              <MaterialIcons name="search" size={24} color="#888" style={styles.searchIcon} />
-              <TextInput
-                style={styles.input}
-                value={ingredients}
-                onChangeText={setIngredients}
-                multiline
-                placeholder="e.g., tomato sauce, dough, pasta, basil, olives"
-                placeholderTextColor="#C0C0C0"
+            <View style={styles.toggleContainer}>
+              <Text style={styles.toggleLabel}>Enable Premium Features</Text>
+              <Switch
+                value={premiumEnabled}
+                onValueChange={(value) => {
+                  //console.log("Toggle changed to:", value);
+                  setPremiumEnabled(value);
+                }}
+                trackColor={{ false: '#767577', true: '#FF8B8B' }}
+                thumbColor={premiumEnabled ? '#FF6B6B' : '#f4f3f4'}
+                ios_backgroundColor="#3e3e3e"
               />
             </View>
-          </View>
+            
+            <View style={styles.searchSection}>
+              <ThemedText style={styles.label}>
+                What ingredients do you have?
+              </ThemedText>
+              
+              <View style={styles.inputContainer}>
+                <MaterialIcons name="search" size={24} color="#888" style={styles.searchIcon} />
+                <TextInput
+                  style={styles.input}
+                  value={ingredients}
+                  onChangeText={setIngredients}
+                  multiline
+                  placeholder="e.g., tomato sauce, dough, pasta, basil, olives"
+                  placeholderTextColor="#C0C0C0"
+                />
+              </View>
+            </View>
 
-          <View style={styles.preferencesSection}>
-            <ThemedText style={styles.sectionTitle}>
-              <MaterialIcons name="restaurant" size={24} color="#FFB6B6" />
-              {" "}Dietary Preferences
-            </ThemedText>
-            <DietaryPreferencesComponent
-              preferences={dietaryPreferences}
-              onUpdate={setDietaryPreferences}
-            />
-          </View>
-          
-          <Animated.View style={{ transform: [{ scale: bounceAnim }] }}>
+            <View style={styles.preferencesSection}>
+              <ThemedText style={styles.sectionTitle}>
+                <MaterialIcons name="restaurant" size={24} color="#FFB6B6" />
+                {" "}Dietary Preferences
+              </ThemedText>
+              <DietaryPreferencesComponent
+                preferences={dietaryPreferences}
+                onUpdate={setDietaryPreferences}
+              />
+            </View>
+            
+            <Animated.View style={{ transform: [{ scale: bounceAnim }] }}>
+              <TouchableOpacity 
+                style={[styles.generateButton, isLoading && { opacity: 0.5 }]}
+                onPress={() => {
+                  animateButton();
+                  handleGenerateSuggestions();
+                }}
+                disabled={isLoading}
+              >
+                <LinearGradient
+                  colors={isLoading ? ['#FFB5B5', '#FFC5C5'] : ['#FF6B6B', '#FF8B8B']}
+                  style={styles.buttonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <MaterialIcons name="restaurant-menu" size={24} color="#FFF" style={styles.buttonIcon} />
+                  <ThemedText style={styles.buttonText}>
+                    {isLoading ? 'COOKING UP IDEAS...' : 'FIND RECIPES'}
+                  </ThemedText>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+
+            {error && (
+              <View style={styles.errorContainer}>
+                <MaterialIcons name="error" size={20} color="#FF3B30" />
+                <ThemedText style={styles.errorText}>{error}</ThemedText>
+              </View>
+            )}
+
+            {isLoading && (
+              <View style={styles.loadingContainer}>
+                <MaterialIcons name="restaurant" size={24} color="#FFF" />
+                <ThemedText style={styles.loadingText}>
+                  🧑‍🍳 Creating delicious suggestions for you...
+                </ThemedText>
+              </View>
+            )}
+
+            {filteredRecipes && filteredRecipes.length > 0 && (
+              <View style={styles.filtersContainer}>
+                <ThemedText style={styles.resultsCount}>
+                  {filteredRecipes.length} {filteredRecipes.length === 1 ? 'Recipe' : 'Recipes'} Found
+                </ThemedText>
+                <RecipeFiltersComponent
+                  filters={recipeFilters}
+                  onUpdateFilters={setRecipeFilters}
+                  onApplyFilters={handleApplyFilters}
+                  activeFilterCount={countActiveFilters(recipeFilters)}
+                />
+              </View>
+            )}
+
+            {filteredRecipes && filteredRecipes.length === 0 && recipes && recipes.length > 0 && (
+              <View style={styles.noMatchesContainer}>
+                <MaterialIcons name="filter-alt-off" size={48} color="#666" />
+                <ThemedText style={styles.noMatchesText}>
+                  No recipes match your filters
+                </ThemedText>
+                <TouchableOpacity 
+                  style={styles.resetFiltersButton} 
+                  onPress={() => {
+                    setRecipeFilters({
+                      timeRange: { min: null, max: null },
+                      difficulty: [],
+                      nutrition: {
+                        calories: { min: null, max: null },
+                        protein: { min: null, max: null },
+                      },
+                    });
+                  }}
+                >
+                  <ThemedText style={styles.resetFiltersText}>Reset Filters</ThemedText>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {filteredRecipes && filteredRecipes.map((recipe, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.recipeCard}
+                onPress={() => handleRecipeSelect(recipe)}
+              >
+                <LinearGradient
+                  colors={['#FFFFFF', '#F8F9FD']}
+                  style={styles.cardGradient}
+                >
+                  <View style={styles.recipeHeader}>
+                    <ThemedText style={styles.recipeName}>{recipe.name}</ThemedText>
+                    <MaterialIcons name="arrow-forward" size={24} color="#FF6B6B" />
+                  </View>
+
+                  <View style={styles.recipeDetails}>
+                    <View style={styles.detailItem}>
+                      <MaterialIcons name="timer" size={20} color="#666" />
+                      <ThemedText style={styles.detailText}>{recipe.timeEstimate} mins</ThemedText>
+                    </View>
+                    <View style={styles.detailDivider} />
+                    <View style={styles.detailItem}>
+                      <MaterialIcons name="school" size={20} color="#666" />
+                      <ThemedText style={styles.detailText}>{recipe.difficulty}</ThemedText>
+                    </View>
+                  </View>
+
+                  <View style={styles.nutritionPreview}>
+                    <View style={styles.nutritionItem}>
+                      <MaterialIcons name="local-fire-department" size={16} color="#FF6B6B" />
+                      <ThemedText style={styles.nutritionText}>{recipe.nutritionInfo.calories} cal</ThemedText>
+                    </View>
+                    <View style={styles.nutritionItem}>
+                      <MaterialIcons name="fitness-center" size={16} color="#4CAF50" />
+                      <ThemedText style={styles.nutritionText}>{recipe.nutritionInfo.protein}g protein</ThemedText>
+                    </View>
+                  </View>
+
+                  <View style={styles.recipeCost}>
+                    <MaterialIcons name="shopping-cart" size={20} color="#FF6B6B" />
+                    <ThemedText style={styles.costText}>
+                      ${recipe.extraIngredientsCost.toFixed(2)} for extra ingredients
+                    </ThemedText>
+                  </View>
+
+                  {recipe.dietaryInfo.restrictions.length > 0 && (
+                    <View style={styles.dietaryContainer}>
+                      {recipe.dietaryInfo.restrictions.map((restriction, idx) => (
+                        <View key={idx} style={styles.dietaryBadge}>
+                          <MaterialIcons name="check-circle" size={16} color="#4CAF50" />
+                          <ThemedText style={styles.dietaryText}>{restriction}</ThemedText>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            ))}
+
             <TouchableOpacity 
-              style={[styles.generateButton, isLoading && { opacity: 0.5 }]}
-              onPress={() => {
-                animateButton();
-                handleGenerateSuggestions();
-              }}
-              disabled={isLoading}
+              style={styles.signOutButton} 
+              onPress={handleSignOut}
             >
               <LinearGradient
-                colors={isLoading ? ['#FFB5B5', '#FFC5C5'] : ['#FF6B6B', '#FF8B8B']}
+                colors={['#FF6B6B', '#FF8B8B']}
                 style={styles.buttonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
-                <MaterialIcons name="restaurant-menu" size={24} color="#FFF" style={styles.buttonIcon} />
-                <ThemedText style={styles.buttonText}>
-                  {isLoading ? 'COOKING UP IDEAS...' : 'FIND RECIPES'}
-                </ThemedText>
+                <MaterialIcons name="exit-to-app" size={24} color="#FFF" style={styles.buttonIcon} />
+                <ThemedText style={styles.buttonText}>SIGN OUT</ThemedText>
               </LinearGradient>
             </TouchableOpacity>
-          </Animated.View>
-
-          {error && (
-            <View style={styles.errorContainer}>
-              <MaterialIcons name="error" size={20} color="#FF3B30" />
-              <ThemedText style={styles.errorText}>{error}</ThemedText>
-            </View>
-          )}
-
-          {isLoading && (
-            <View style={styles.loadingContainer}>
-              <MaterialIcons name="restaurant" size={24} color="#FFF" />
-              <ThemedText style={styles.loadingText}>
-                🧑‍🍳 Creating delicious suggestions for you...
-              </ThemedText>
-            </View>
-          )}
-
-          {filteredRecipes && filteredRecipes.length > 0 && (
-            <View style={styles.filtersContainer}>
-              <ThemedText style={styles.resultsCount}>
-                {filteredRecipes.length} {filteredRecipes.length === 1 ? 'Recipe' : 'Recipes'} Found
-              </ThemedText>
-              <RecipeFiltersComponent
-                filters={recipeFilters}
-                onUpdateFilters={setRecipeFilters}
-                onApplyFilters={handleApplyFilters}
-                activeFilterCount={countActiveFilters(recipeFilters)}
-              />
-            </View>
-          )}
-
-          {filteredRecipes && filteredRecipes.length === 0 && recipes && recipes.length > 0 && (
-            <View style={styles.noMatchesContainer}>
-              <MaterialIcons name="filter-alt-off" size={48} color="#666" />
-              <ThemedText style={styles.noMatchesText}>
-                No recipes match your filters
-              </ThemedText>
-              <TouchableOpacity 
-                style={styles.resetFiltersButton} 
-                onPress={() => {
-                  setRecipeFilters({
-                    timeRange: { min: null, max: null },
-                    difficulty: [],
-                    nutrition: {
-                      calories: { min: null, max: null },
-                      protein: { min: null, max: null },
-                    },
-                  });
-                }}
-              >
-                <ThemedText style={styles.resetFiltersText}>Reset Filters</ThemedText>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {filteredRecipes && filteredRecipes.map((recipe, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.recipeCard}
-              onPress={() => handleRecipeSelect(recipe)}
-            >
-              <LinearGradient
-                colors={['#FFFFFF', '#F8F9FD']}
-                style={styles.cardGradient}
-              >
-                <View style={styles.recipeHeader}>
-                  <ThemedText style={styles.recipeName}>{recipe.name}</ThemedText>
-                  <MaterialIcons name="arrow-forward" size={24} color="#FF6B6B" />
-                </View>
-
-                <View style={styles.recipeDetails}>
-                  <View style={styles.detailItem}>
-                    <MaterialIcons name="timer" size={20} color="#666" />
-                    <ThemedText style={styles.detailText}>{recipe.timeEstimate} mins</ThemedText>
-                  </View>
-                  <View style={styles.detailDivider} />
-                  <View style={styles.detailItem}>
-                    <MaterialIcons name="school" size={20} color="#666" />
-                    <ThemedText style={styles.detailText}>{recipe.difficulty}</ThemedText>
-                  </View>
-                </View>
-
-                <View style={styles.nutritionPreview}>
-                  <View style={styles.nutritionItem}>
-                    <MaterialIcons name="local-fire-department" size={16} color="#FF6B6B" />
-                    <ThemedText style={styles.nutritionText}>{recipe.nutritionInfo.calories} cal</ThemedText>
-                  </View>
-                  <View style={styles.nutritionItem}>
-                    <MaterialIcons name="fitness-center" size={16} color="#4CAF50" />
-                    <ThemedText style={styles.nutritionText}>{recipe.nutritionInfo.protein}g protein</ThemedText>
-                  </View>
-                </View>
-
-                <View style={styles.recipeCost}>
-                  <MaterialIcons name="shopping-cart" size={20} color="#FF6B6B" />
-                  <ThemedText style={styles.costText}>
-                    ${recipe.extraIngredientsCost.toFixed(2)} for extra ingredients
-                  </ThemedText>
-                </View>
-
-                {recipe.dietaryInfo.restrictions.length > 0 && (
-                  <View style={styles.dietaryContainer}>
-                    {recipe.dietaryInfo.restrictions.map((restriction, idx) => (
-                      <View key={idx} style={styles.dietaryBadge}>
-                        <MaterialIcons name="check-circle" size={16} color="#4CAF50" />
-                        <ThemedText style={styles.dietaryText}>{restriction}</ThemedText>
-                      </View>
-                    ))}
-                  </View>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
-          ))}
-
-          <TouchableOpacity 
-            style={styles.signOutButton} 
-            onPress={handleSignOut}
-          >
-            <LinearGradient
-              colors={['#FF6B6B', '#FF8B8B']}
-              style={styles.buttonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <MaterialIcons name="exit-to-app" size={24} color="#FFF" style={styles.buttonIcon} />
-              <ThemedText style={styles.buttonText}>SIGN OUT</ThemedText>
-            </LinearGradient>
-          </TouchableOpacity>
-        </ThemedView>
-      </ScrollView>
-    </LinearGradient>
+          </ThemedView>
+        </ScrollView>
+      </LinearGradient>
+    </SafeAreaView>
   );
 };
 
