@@ -2,6 +2,12 @@ import { groq } from '@/config/groq';
 import { Recipe } from '@/types/recipe';
 import { DietaryPreferences } from '@/types/dietary';
 import { logEvent, RecipeEvents } from '@/config/firebase';
+import { 
+  trackRecipeGenerationComplete, 
+  trackError,
+  trackPerformanceMetric 
+} from '@/services/analyticsService';
+
 import { db, auth } from '@/config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -14,6 +20,9 @@ export async function generateRecipeSuggestions(
   ingredients: string,
   dietaryPreferences: DietaryPreferences
 ): Promise<GenerateRecipesResponse> {
+  // Record the start time for performance tracking
+  const startTime = performance.now();
+  
   try {
     // Get the current user
     const user = auth.currentUser;
@@ -86,6 +95,9 @@ For each step in the cooking instructions, add a "(Time: x minutes)" at the end 
 
 Keep the format consistent and make sure to include all sections for each recipe. Separate recipes with ---`;
 
+    // Track API call start time
+    const apiStartTime = performance.now();
+    
     const response = await groq.chat.completions.create({
       messages: [
         {
@@ -97,12 +109,17 @@ Keep the format consistent and make sure to include all sections for each recipe
       temperature: 0.7,
       max_tokens: 1500,
     });
+    
+    // Calculate and track API latency
+    const apiEndTime = performance.now();
+    trackPerformanceMetric('llm_api_latency', apiEndTime - apiStartTime);
 
     // Log the LLM response
     await logEvent(RecipeEvents.LLM_RESPONSE, {
       success: true,
       responseLength: response.choices[0]?.message?.content?.length || 0,
-      model: "llama-3.3-70b-versatile"
+      model: "llama-3.3-70b-versatile",
+      latency_ms: Math.round(apiEndTime - apiStartTime)
     });
 
     const content = response.choices[0]?.message?.content;
@@ -112,6 +129,7 @@ Keep the format consistent and make sure to include all sections for each recipe
         error: 'No content in LLM response',
         stage: 'content_check'
       });
+      trackError('recipe_generation', 'No content in LLM response');
       return { recipes: null, error: 'Failed to generate suggestions. Please try again.' };
     }
 
@@ -230,28 +248,34 @@ Keep the format consistent and make sure to include all sections for each recipe
         dietaryInfo: recipe.dietaryInfo
       }));
 
-      return recipe as Recipe;
+      return recipe as Recipe; // Type assertion since we've built all required fields
     });
-
-    // Log successful recipe generation with price estimates
-    await logEvent(RecipeEvents.PRICE_ESTIMATE, {
-      recipeCount: recipes.length,
-      averageCost: recipes.reduce((acc, recipe) => acc + recipe.extraIngredientsCost, 0) / recipes.length,
-      totalIngredients: recipes.reduce((acc, recipe) => acc + recipe.extraIngredients.length, 0)
-    });
+    
+    // Calculate total generation time and track it
+    const endTime = performance.now();
+    const totalTimeMs = Math.round(endTime - startTime);
+    
+    // Track recipe generation completion
+    trackRecipeGenerationComplete(
+      ingredients.split(',').length,
+      recipes.length,
+      totalTimeMs
+    );
+    
+    // Track overall performance
+    trackPerformanceMetric('recipe_generation_total_time', totalTimeMs);
 
     return { recipes, error: null };
   } catch (error: any) {
-    // Log error in recipe generation
+    // Log and track error
+    console.error('Error generating recipe suggestions:', error);
     await logEvent(RecipeEvents.RECIPE_ERROR, {
-      error: error.message,
-      stage: 'recipe_generation'
+      error: error.message || 'Unknown error',
+      stage: 'api_call'
     });
     
-    console.error('Error generating recipes:', error);
-    return {
-      recipes: null,
-      error: error.message || 'Failed to generate suggestions. Please try again.'
-    };
+    trackError('recipe_generation', error.message || 'Unknown error', error.stack);
+    
+    return { recipes: null, error: 'Failed to generate suggestions. Please try again.' };
   }
 } 

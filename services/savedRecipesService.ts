@@ -12,6 +12,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { Recipe } from '@/types/recipe';
+import { trackRecipeSave, trackRecipeDelete } from '@/services/analyticsService';
 
 const SAVED_RECIPES_COLLECTION = 'savedRecipes';
 
@@ -47,6 +48,7 @@ export async function saveRecipe(recipe: Recipe): Promise<string> {
     };
 
     const docRef = await addDoc(collection(db, SAVED_RECIPES_COLLECTION), recipeData);
+    
     return docRef.id;
   } catch (error: any) {
     console.error('Error saving recipe:', error);
@@ -138,9 +140,59 @@ export async function deleteRecipe(recipeId: string): Promise<void> {
       throw new Error('Unauthorized to delete this recipe');
     }
     
+    // Track recipe deletion with analytics
+    trackRecipeDelete(recipeData.recipe);
+    
     await deleteDoc(recipeRef);
   } catch (error: any) {
     console.error('Error deleting recipe:', error);
     throw new Error(`Failed to delete recipe: ${error.message}`);
+  }
+}
+
+/**
+ * Gets the total number of saved recipes in the system
+ * Used for dashboard metrics
+ */
+export async function getSavedRecipesCount(): Promise<number> {
+  try {
+    const snapshot = await getDocs(collection(db, SAVED_RECIPES_COLLECTION));
+    return snapshot.size;
+  } catch (error: any) {
+    console.error('Error getting saved recipes count:', error);
+    return 0;
+  }
+}
+
+/**
+ * Gets the most saved recipes across all users
+ * Used for dashboard metrics
+ */
+export async function getMostSavedRecipes(limit = 5): Promise<{name: string, count: number}[]> {
+  try {
+    const snapshot = await getDocs(collection(db, SAVED_RECIPES_COLLECTION));
+    
+    // Count saves per recipe
+    const recipeCounts: Record<string, number> = {};
+    
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const recipeName = data.recipe?.name;
+      
+      if (recipeName) {
+        recipeCounts[recipeName] = (recipeCounts[recipeName] || 0) + 1;
+      }
+    });
+    
+    // Convert to array and sort
+    const sortedRecipes = Object.entries(recipeCounts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit);
+    
+    return sortedRecipes;
+  } catch (error: any) {
+    console.error('Error getting most saved recipes:', error);
+    return [];
   }
 } 

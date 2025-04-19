@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Modal, ScrollView, TextInput } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Modal, ScrollView, TextInput, Platform } from 'react-native';
 import { ThemedText } from './ThemedText';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { logAnalyticsEvent } from '@/services/analyticsService';
 
 export interface RecipeFilters {
   timeRange: {
@@ -44,6 +45,7 @@ export default function RecipeFiltersComponent({
     onUpdateFilters(tempFilters);
     onApplyFilters();
     setModalVisible(false);
+    logAnalyticsEvent('filters_applied', { filters: JSON.stringify(tempFilters) });
   };
 
   const resetFilters = () => {
@@ -59,6 +61,7 @@ export default function RecipeFiltersComponent({
     onUpdateFilters(emptyFilters);
     onApplyFilters();
     setModalVisible(false);
+    logAnalyticsEvent('filters_reset', { filters: JSON.stringify(emptyFilters) });
   };
 
   const toggleDifficulty = (difficulty: string) => {

@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getSavedRecipes, deleteRecipe, SavedRecipe } from '@/services/savedRecipesService';
 import RecipeFiltersComponent, { RecipeFilters } from '@/components/RecipeFilters';
 import { filterSavedRecipes, countActiveFilters } from '@/utils/recipeFilters';
+import { trackScreenView, trackRecipeDelete, logAnalyticsEvent } from '@/services/analyticsService';
 import PremiumGuard from '@/components/premiumGuard';
 
 export default function SavedRecipesScreen() {
@@ -15,6 +16,7 @@ export default function SavedRecipesScreen() {
   const [filteredRecipes, setFilteredRecipes] = useState<SavedRecipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [screenStartTime] = useState(Date.now());
   
   // Recipe filters state
   const [recipeFilters, setRecipeFilters] = useState<RecipeFilters>({
@@ -28,12 +30,27 @@ export default function SavedRecipesScreen() {
 
   useEffect(() => {
     loadSavedRecipes();
+    
+    return () => {
+      // Track screen time
+      const timeSpent = Math.round((Date.now() - screenStartTime) / 1000);
+      trackScreenView('saved_recipes', timeSpent);
+    };
   }, []);
   
   // Effect to apply filters when recipes or filters change
   useEffect(() => {
     const filtered = filterSavedRecipes(recipes, recipeFilters);
     setFilteredRecipes(filtered);
+    
+    // Log filter usage when filters are active
+    if (countActiveFilters(recipeFilters) > 0) {
+      logAnalyticsEvent('apply_saved_filters', {
+        filter_count: countActiveFilters(recipeFilters),
+        result_count: filtered.length,
+        total_recipes: recipes.length
+      });
+    }
   }, [recipes, recipeFilters]);
 
   const loadSavedRecipes = async () => {
@@ -80,6 +97,9 @@ export default function SavedRecipesScreen() {
           onPress: async () => {
             try {
               await deleteRecipe(recipe.id);
+              // Track recipe deletion
+              trackRecipeDelete(recipe.recipe);
+              
               // Remove from local state
               const updatedRecipes = recipes.filter(r => r.id !== recipe.id);
               setRecipes(updatedRecipes);

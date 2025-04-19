@@ -12,9 +12,9 @@ import { filterRecipes, countActiveFilters } from '@/utils/recipeFilters';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { trackScreenView, trackIngredientSearch, trackError, logAnalyticsEvent } from '@/services/analyticsService';
 import { logEvent, RecipeEvents } from '@/config/firebase';
 import { usePremiumFeature } from '@/context/PremiumFeatureContext';
-
 
 const HomeScreen: React.FC = () => {
   const [ingredients, setIngredients] = useState('');
@@ -47,36 +47,28 @@ const HomeScreen: React.FC = () => {
   useEffect(() => {
     const user = auth.currentUser;
     if (user?.displayName) {
-      setUsername(user.displayName); // This will now use the first name
-      //console.log("Used first name")
-    } else if (user?.email) {
-      // Fallback to email if displayName isn't set (for existing users)
+      setUsername(user.displayName); 
+    } else if (user?.email) { //fallback stuff
       setUsername(user.email.split('@')[0]);
     }
 
     return () => {
-      // Log screen time when component unmounts
-      const timeSpent = Math.round((Date.now() - screenStartTime) / 1000); // Convert to seconds
-      logEvent(RecipeEvents.SCREEN_TIME, {
-        screen: 'home',
-        timeSpentSeconds: timeSpent,
-        hasRecipes: !!recipes?.length
-      });
+      // Logging screen time
+      const timeSpent = Math.round((Date.now() - screenStartTime) / 1000); 
+      trackScreenView('home', timeSpent);
     };
   }, [screenStartTime, recipes]);
   
-  // Effect to apply filters when recipes or filters change
   useEffect(() => {
     if (recipes) {
       const filtered = filterRecipes(recipes, recipeFilters);
       setFilteredRecipes(filtered);
       
-      // Log filter application
+      // Log filter event
       if (countActiveFilters(recipeFilters) > 0) {
-        logEvent(RecipeEvents.RECIPE_ERROR, {
-          action: 'apply_filters',
-          filterCount: countActiveFilters(recipeFilters),
-          resultCount: filtered.length
+        logAnalyticsEvent('apply_filters', {
+          filter_count: countActiveFilters(recipeFilters),
+          result_count: filtered.length
         });
       }
     }
@@ -97,7 +89,6 @@ const HomeScreen: React.FC = () => {
         setError(result.error);
       } else {
         setRecipes(result.recipes);
-        // Apply initial filtering
         setFilteredRecipes(filterRecipes(result.recipes || [], recipeFilters));
       }
     } catch (err) {
@@ -165,7 +156,6 @@ const HomeScreen: React.FC = () => {
             <Switch
               value={premiumEnabled}
               onValueChange={(value) => {
-                //console.log("Toggle changed to:", value);
                 setPremiumEnabled(value);
               }}
               trackColor={{ false: '#767577', true: '#FF8B8B' }}
@@ -470,6 +460,9 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   buttonIcon: {
+    
+    
+    
     marginRight: 8,
   },
   buttonText: {
