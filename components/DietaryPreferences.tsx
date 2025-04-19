@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { DietaryRestriction, DietaryPreferences, DietaryAllergies, DietaryPlan } from '../types/dietary';
-import { logEvent, RecipeEvents } from '@/config/firebase';
+import { trackDietaryPreferenceToggle } from '@/services/analyticsService';
 
 interface DietaryPreferencesProps {
   preferences: DietaryPreferences;
@@ -64,11 +64,7 @@ export default function DietaryPreferencesComponent({
   const toggleRestriction = (restriction: DietaryRestriction) => {
     const isAdding = !preferences.restrictions.includes(restriction);
     
-    logEvent(RecipeEvents.DIETARY_TOGGLE, {
-      restriction,
-      action: isAdding ? 'add' : 'remove',
-      category: 'restriction'
-    });
+    trackDietaryPreferenceToggle(restriction, 'restriction', isAdding);
 
     const updatedRestrictions = isAdding
       ? [...preferences.restrictions, restriction]
@@ -80,11 +76,7 @@ export default function DietaryPreferencesComponent({
   const addCustomRestriction = () => {
     const restriction = newRestriction.trim().toLowerCase();
     if (restriction && !preferences.restrictions.includes(restriction as DietaryRestriction)) {
-      logEvent(RecipeEvents.DIETARY_TOGGLE, {
-        restriction,
-        action: 'add',
-        category: 'restriction'
-      });
+      trackDietaryPreferenceToggle(restriction, 'restriction', true);
 
       onUpdate({
         ...preferences,
@@ -95,11 +87,7 @@ export default function DietaryPreferencesComponent({
   };
 
   const removeCustomRestriction = (restriction: string) => {
-    logEvent(RecipeEvents.DIETARY_TOGGLE, {
-      restriction,
-      action: 'remove',
-      category: 'restriction'
-    });
+    trackDietaryPreferenceToggle(restriction, 'restriction', false);
 
     onUpdate({
       ...preferences,
@@ -111,11 +99,7 @@ export default function DietaryPreferencesComponent({
   const toggleAllergy = (allergy: DietaryAllergies) => {
     const isAdding = !preferences.allergies.includes(allergy);
   
-    logEvent(RecipeEvents.DIETARY_TOGGLE, {
-      allergy,
-      action: isAdding ? 'add' : 'remove',
-      category: 'allergy'
-    });
+    trackDietaryPreferenceToggle(allergy, 'allergy', isAdding);
   
     const updatedAllergies = isAdding
       ? [...preferences.allergies, allergy]
@@ -127,11 +111,7 @@ export default function DietaryPreferencesComponent({
   const addCustomAllergy = () => {
     const allergy = newAllergy.trim().toLowerCase();
     if (allergy && !preferences.allergies.includes(allergy as DietaryAllergies)) {
-      logEvent(RecipeEvents.DIETARY_TOGGLE, {
-        allergy,
-        action: 'add',
-        category: 'allergy'
-      });
+      trackDietaryPreferenceToggle(allergy, 'allergy', true);
 
       onUpdate({
         ...preferences,
@@ -142,11 +122,7 @@ export default function DietaryPreferencesComponent({
   };
 
   const removeCustomAllergy = (allergy: string) => {
-    logEvent(RecipeEvents.DIETARY_TOGGLE, {
-      allergy,
-      action: 'remove',
-      category: 'allergy'
-    });
+    trackDietaryPreferenceToggle(allergy, 'allergy', false);
 
     onUpdate({
       ...preferences,
@@ -158,11 +134,7 @@ export default function DietaryPreferencesComponent({
   const toggleDietPlan = (dietPlan: DietaryPlan) => {
     const isAdding = !(preferences.preferences || []).includes(dietPlan);
   
-    logEvent(RecipeEvents.DIETARY_TOGGLE, {
-      dietPlan,
-      action: isAdding ? 'add' : 'remove',
-      category: 'diet_plan'
-    });
+    trackDietaryPreferenceToggle(dietPlan, 'diet_plan', isAdding);
   
     const updatedDietPlan = isAdding
       ? [...(preferences.preferences || []), dietPlan]
@@ -174,11 +146,7 @@ export default function DietaryPreferencesComponent({
   const addCustomDietPlan = () => {
     const dietPlan = newDietPlan.trim().toLowerCase();
     if (dietPlan && !(preferences.preferences || []).includes(dietPlan as DietaryPlan)) {
-      logEvent(RecipeEvents.DIETARY_TOGGLE, {
-        dietPlan,
-        action: 'add',
-        category: 'diet_plan'
-      });
+      trackDietaryPreferenceToggle(dietPlan, 'diet_plan', true);
 
       onUpdate({
         ...preferences,
@@ -189,11 +157,7 @@ export default function DietaryPreferencesComponent({
   };
 
   const removeCustomDietPlan = (dietPlan: string) => {
-    logEvent(RecipeEvents.DIETARY_TOGGLE, {
-      dietPlan,
-      action: 'remove',
-      category: 'diet_plan'
-    });
+    trackDietaryPreferenceToggle(dietPlan, 'diet_plan', false);
 
     onUpdate({
       ...preferences,

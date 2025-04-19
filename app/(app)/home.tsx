@@ -12,7 +12,7 @@ import { filterRecipes, countActiveFilters } from '@/utils/recipeFilters';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { logEvent, RecipeEvents } from '@/config/firebase';
+import { trackScreenView, trackIngredientSearch, trackError, logAnalyticsEvent } from '@/services/analyticsService';
 
 const HomeScreen: React.FC = () => {
   const [ingredients, setIngredients] = useState('');
@@ -53,11 +53,7 @@ const HomeScreen: React.FC = () => {
     return () => {
       // Log screen time when component unmounts
       const timeSpent = Math.round((Date.now() - screenStartTime) / 1000); // Convert to seconds
-      logEvent(RecipeEvents.SCREEN_TIME, {
-        screen: 'home',
-        timeSpentSeconds: timeSpent,
-        hasRecipes: !!recipes?.length
-      });
+      trackScreenView('home', timeSpent);
     };
   }, [screenStartTime, recipes]);
   
@@ -69,10 +65,9 @@ const HomeScreen: React.FC = () => {
       
       // Log filter application
       if (countActiveFilters(recipeFilters) > 0) {
-        logEvent(RecipeEvents.RECIPE_ERROR, {
-          action: 'apply_filters',
-          filterCount: countActiveFilters(recipeFilters),
-          resultCount: filtered.length
+        logAnalyticsEvent('apply_filters', {
+          filter_count: countActiveFilters(recipeFilters),
+          result_count: filtered.length
         });
       }
     }

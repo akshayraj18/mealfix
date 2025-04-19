@@ -13,7 +13,8 @@ import {
   CakeIcon,
   UserIcon,
   ArrowTrendingUpIcon,
-  ClockIcon
+  ClockIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import { 
   getPopularRecipes, 
@@ -21,11 +22,13 @@ import {
   getIngredientCombinations,
   getUserEngagementMetrics,
   getPerformanceMetrics,
+  getRawAnalyticsEvents,
   RecipeViewsData,
   DietaryTrendsData,
   IngredientCombinationData,
   UserEngagementData,
-  PerformanceMetricsData
+  PerformanceMetricsData,
+  checkFirestoreCollections
 } from '@/services/analyticsService';
 import { 
   getABTests, 
@@ -44,12 +47,68 @@ const navigation = [
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [popularRecipes, setPopularRecipes] = useState<RecipeViewsData[]>([]);
   const [dietaryTrends, setDietaryTrends] = useState<DietaryTrendsData[]>([]);
   const [ingredientCombinations, setIngredientCombinations] = useState<IngredientCombinationData[]>([]);
   const [userMetrics, setUserMetrics] = useState<UserEngagementData | null>(null);
   const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetricsData | null>(null);
   const [abTests, setAbTests] = useState<ABTest[]>([]);
+  const [rawEvents, setRawEvents] = useState<any[]>([]);
+  const [showRawEvents, setShowRawEvents] = useState(false);
+
+  const fetchDashboardData = async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    
+    try {
+      // Fetch in parallel for better performance
+      const [
+        recipesData, 
+        trendsData, 
+        combinationsData, 
+        metricsData, 
+        performanceData,
+        testsData,
+        eventsData
+      ] = await Promise.all([
+        getPopularRecipes(),
+        getDietaryTrends(),
+        getIngredientCombinations(),
+        getUserEngagementMetrics(),
+        getPerformanceMetrics(),
+        getABTests(),
+        getRawAnalyticsEvents(10)
+      ]);
+      
+      setPopularRecipes(recipesData);
+      setDietaryTrends(trendsData);
+      setIngredientCombinations(combinationsData);
+      setUserMetrics(metricsData);
+      setPerformanceMetrics(performanceData);
+      setAbTests(testsData.filter(test => test.status === ABTestStatus.ACTIVE));
+      setRawEvents(eventsData);
+      setLastRefresh(new Date());
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+  
+  const handleRefresh = () => {
+    fetchDashboardData(true);
+  };
+
+  // Add button to toggle raw events view
+  const toggleRawEvents = () => {
+    setShowRawEvents(!showRawEvents);
+  };
 
   useEffect(() => {
     // Log dashboard view event
@@ -57,41 +116,23 @@ export default function Dashboard() {
       timestamp: new Date().toISOString()
     });
     
-    // Fetch all dashboard data
-    const fetchDashboardData = async () => {
-      setLoading(true);
-      try {
-        // Fetch in parallel for better performance
-        const [
-          recipesData, 
-          trendsData, 
-          combinationsData, 
-          metricsData, 
-          performanceData,
-          testsData
-        ] = await Promise.all([
-          getPopularRecipes(),
-          getDietaryTrends(),
-          getIngredientCombinations(),
-          getUserEngagementMetrics(),
-          getPerformanceMetrics(),
-          getABTests()
-        ]);
-        
-        setPopularRecipes(recipesData);
-        setDietaryTrends(trendsData);
-        setIngredientCombinations(combinationsData);
-        setUserMetrics(metricsData);
-        setPerformanceMetrics(performanceData);
-        setAbTests(testsData.filter(test => test.status === ABTestStatus.ACTIVE));
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    // Check Firestore collections for debugging
+    console.log('Dashboard mounted, checking Firestore collections...');
+    checkFirestoreCollections().catch(err => {
+      console.error('Error in collection check:', err);
+    });
     
+    // Initial data fetch
     fetchDashboardData();
+    
+    // Set up auto-refresh every 30 seconds
+    const refreshInterval = setInterval(() => {
+      console.log('Auto-refreshing dashboard data...');
+      fetchDashboardData(true);
+    }, 30000);
+    
+    // Clean up interval on unmount
+    return () => clearInterval(refreshInterval);
   }, []);
 
   return (
@@ -172,6 +213,27 @@ export default function Dashboard() {
             <div className="flex flex-1">
               <h1 className="text-2xl font-semibold text-gray-900 my-auto">Dashboard</h1>
             </div>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={toggleRawEvents}
+                className={`text-xs px-3 py-1 rounded ${showRawEvents ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+              >
+                {showRawEvents ? 'Hide Raw Data' : 'Show Raw Data'}
+              </button>
+              <span className="text-xs text-gray-500">
+                Last updated: {lastRefresh.toLocaleTimeString()}
+              </span>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className={`p-2 rounded-full ${refreshing ? 'bg-gray-100' : 'hover:bg-gray-100'}`}
+                title="Refresh data"
+              >
+                <ArrowPathIcon 
+                  className={`h-5 w-5 text-gray-600 ${refreshing ? 'animate-spin' : ''}`} 
+                />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -183,6 +245,82 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                {/* Raw Analytics Events Debug Panel */}
+                {showRawEvents && (
+                  <div className="bg-white shadow overflow-hidden rounded-lg mb-6">
+                    <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+                      <h3 className="text-lg leading-6 font-medium text-gray-900">Raw Analytics Events</h3>
+                      <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Debug View</span>
+                    </div>
+                    <div className="border-t border-gray-200 p-4">
+                      {rawEvents.length === 0 ? (
+                        <p className="text-gray-500">No events found in Firebase</p>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                              <tr>
+                                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Event Type
+                                </th>
+                                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Recipe Name
+                                </th>
+                                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  Timestamp
+                                </th>
+                                <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                  User ID
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {rawEvents.map((event, idx) => (
+                                <tr key={event.id || idx} className="hover:bg-gray-50">
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {event.event_name}
+                                  </td>
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                    {event.recipe_name || 
+                                     (event.parameters && event.parameters.recipe_name) || 
+                                     'N/A'}
+                                  </td>
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                    {typeof event.timestamp === 'string' 
+                                      ? new Date(event.timestamp).toLocaleString()
+                                      : 'Invalid Date'}
+                                  </td>
+                                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
+                                    {event.user_id || 'anonymous'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Data availability notification */}
+                {(!popularRecipes.length || popularRecipes[0].viewCount === 0) && (
+                  <div className="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
+                    <div className="flex">
+                      <div className="flex-shrink-0">
+                        <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="ml-3">
+                        <p className="text-sm text-yellow-700">
+                          No real analytics data found. Make sure your app is tracking events to Firebase, and that you've removed any setup scripts creating dummy data.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 {/* Quick stats */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
                   <div className="rounded-lg bg-white p-5 shadow">

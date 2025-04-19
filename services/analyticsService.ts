@@ -1,4 +1,4 @@
-import { db, auth, logEvent, RecipeEvents } from '@/config/firebase';
+import { db, auth, logEvent, RecipeEvents } from '../config/firebase';
 import { 
   collection, 
   addDoc, 
@@ -7,13 +7,32 @@ import {
   where,
   getDocs,
   orderBy,
-  limit
+  limit,
+  Timestamp,
+  increment,
+  doc,
+  updateDoc,
+  setDoc,
+  getDoc
 } from 'firebase/firestore';
-import { Recipe } from '@/types/recipe';
+import { Recipe } from '../types/recipe';
 import { Platform } from 'react-native';
+import * as Application from 'expo-application';
+// Add a type declaration for uuid
+// @ts-ignore
+import { v4 as uuidv4 } from 'uuid';
 
-// Collection name for analytics events
+// Collection names for analytics data
 export const ANALYTICS_EVENTS_COLLECTION = 'analytics_events';
+export const METRICS_COLLECTION = 'metrics_aggregated';
+export const USER_METRICS_COLLECTION = 'user_metrics';
+
+// Generate a unique session ID for this app instance
+// This will persist for the duration of the app session
+const SESSION_ID = uuidv4();
+
+// Get the platform
+const PLATFORM = Platform.OS;
 
 // Base interface for all analytics events
 interface AnalyticsEvent {
@@ -22,32 +41,75 @@ interface AnalyticsEvent {
   timestamp: any; // serverTimestamp
   platform: string;
   appVersion: string;
+  deviceModel?: string;
   // Additional properties can be added in specific event types
 }
 
-/**
- * Logs an event to both Firebase Analytics and Firestore
- */
-async function trackEvent(eventName: string, properties: Record<string, any> = {}) {
+// Get app version
+function getAppVersion(): string {
   try {
-    // Log to Firebase Analytics
-    await logEvent(eventName, properties);
+    if (Platform.OS === 'ios') {
+      return Application.nativeApplicationVersion || '1.0.0';
+    } else if (Platform.OS === 'android') {
+      return Application.nativeApplicationVersion || '1.0.0';
+    }
+    return '1.0.0'; // Default fallback
+  } catch (error) {
+    console.error('Error getting app version:', error);
+    return '1.0.0';
+  }
+}
+
+// Get user ID safely
+function getUserId(): string {
+  return auth.currentUser?.uid || 'anonymous';
+}
+
+/**
+ * Logs an analytics event to both Firebase Analytics and Firestore
+ * This dual-logging approach ensures both real-time analytics and
+ * queryable data for the dashboard
+ */
+async function logAnalyticsEvent(eventName: string, parameters: Record<string, any> = {}) {
+  try {
+    // 1. Log to Firebase Analytics using the existing helper
+    await logEvent(eventName, parameters);
     
-    // Log to Firestore for dashboard queries
-    const user = auth.currentUser;
-    const eventData: AnalyticsEvent = {
-      eventName,
-      userId: user ? user.uid : null,
-      timestamp: serverTimestamp(),
-      platform: Platform.OS,
-      appVersion: '1.0.0', // You would use a proper version tracking mechanism
-      ...properties
+    // 2. Log to Firestore for dashboard queries
+    const userId = getUserId();
+    const timestamp = new Date();
+    
+    // Create the event document with parameters directly merged in the root
+    // This makes it easier for the dashboard to query specific fields
+    const eventData = {
+      event_name: eventName,        
+      user_id: userId,              
+      timestamp: serverTimestamp(), 
+      client_timestamp: timestamp.toISOString(), 
+      session_id: SESSION_ID,
+      platform: PLATFORM,
+      app_version: getAppVersion(),
+      parameters,                    // Keep parameters as a nested object for backward compatibility
+      // Also include key parameters directly in the root of the document for easier querying
+      ...(parameters.recipe_name ? { recipe_name: parameters.recipe_name } : {}),
+      ...(parameters.preference ? { preference: parameters.preference } : {}),
+      ...(parameters.ingredients ? { ingredients: parameters.ingredients } : {}),
+      ...(parameters.screen_name ? { screen_name: parameters.screen_name } : {}),
+      ...(parameters.difficulty ? { difficulty: parameters.difficulty } : {})
     };
     
+    // Add the event to Firestore
     await addDoc(collection(db, ANALYTICS_EVENTS_COLLECTION), eventData);
+    
+    console.log(`Event ${eventName} logged to both Analytics and Firestore`);
+    return true;
   } catch (error) {
-    console.error(`Error tracking ${eventName} event:`, error);
-    // Don't throw - analytics errors shouldn't interrupt user experience
+    console.error('Failed to log analytics event:', error);
+    // Still try to log to Firebase Analytics directly as fallback
+    logEvent(eventName, parameters).catch(err => {
+      console.error('Failed to log fallback analytics event:', err);
+    });
+    return false;
   }
 }
 
@@ -55,83 +117,161 @@ async function trackEvent(eventName: string, properties: Record<string, any> = {
  * Tracks when a user views a recipe
  */
 export function trackRecipeView(recipe: Recipe) {
-  trackEvent(RecipeEvents.VIEW_RECIPE, {
+  logAnalyticsEvent(RecipeEvents.VIEW_RECIPE, {
     recipe_name: recipe.name,
     difficulty: recipe.difficulty,
     time_estimate: recipe.timeEstimate,
-    dietary_restrictions: recipe.dietaryInfo.restrictions
+    extra_ingredients_cost: recipe.extraIngredientsCost,
+    total_ingredients: (recipe.currentIngredients?.length || 0) + (recipe.extraIngredients?.length || 0),
+    has_nutrition_info: !!recipe.nutritionInfo,
+    has_dietary_info: !!(recipe.dietaryInfo?.restrictions?.length || recipe.dietaryInfo?.allergens?.length)
   });
 }
 
 /**
  * Tracks when a user saves a recipe
  */
-export function trackRecipeSave(recipe: Recipe) {
-  trackEvent(RecipeEvents.SAVE_RECIPE, {
+export function trackRecipeSave(recipe: Recipe, isSaving: boolean) {
+  logAnalyticsEvent(RecipeEvents.SAVE_RECIPE, {
     recipe_name: recipe.name,
+    action: isSaving ? 'save' : 'unsave',
     difficulty: recipe.difficulty,
-    time_estimate: recipe.timeEstimate,
-    dietary_restrictions: recipe.dietaryInfo.restrictions
+    time_estimate: recipe.timeEstimate
+  });
+}
+
+/**
+ * Tracks when a recipe is deleted from saved list
+ */
+export function trackRecipeDelete(recipe: Recipe) {
+  logAnalyticsEvent('recipe_delete', {
+    recipe_name: recipe.name,
+    difficulty: recipe.difficulty
   });
 }
 
 /**
  * Tracks when a user toggles a dietary preference
  */
-export function trackDietaryPreferenceToggle(preference: string, isEnabled: boolean) {
-  trackEvent(RecipeEvents.DIETARY_TOGGLE, {
-    preference,
-    is_enabled: isEnabled
+export function trackDietaryPreferenceToggle(
+  preference: string,
+  category: 'restriction' | 'allergy' | 'diet_plan',
+  isEnabled: boolean
+) {
+  logAnalyticsEvent(RecipeEvents.DIETARY_TOGGLE, {
+    preference: preference,
+    category: category,
+    action: isEnabled ? 'add' : 'remove'
   });
 }
 
 /**
- * Tracks screen viewing time
+ * Tracks screen views with time spent
  */
 export function trackScreenView(screenName: string, timeSpentMs: number) {
-  trackEvent('screen_view', {
+  // Log the original screen_view event format for backward compatibility
+  logAnalyticsEvent('screen_view', {
     screen_name: screenName,
     time_spent_ms: timeSpentMs
+  });
+  
+  // Also log using the screen_time format that matches the existing structure in the database
+  logAnalyticsEvent('screen_time', {
+    screen: screenName,
+    timeSpentSeconds: Math.round(timeSpentMs / 1000), // Convert ms to seconds
+    hasRecipes: false
   });
 }
 
 /**
  * Tracks ingredient searches
  */
-export function trackIngredientSearch(searchQuery: string, resultCount: number) {
-  trackEvent(RecipeEvents.SEARCH_INGREDIENTS, {
-    search_query: searchQuery,
-    result_count: resultCount
+export function trackIngredientSearch(ingredients: string[]) {
+  logAnalyticsEvent(RecipeEvents.SEARCH_INGREDIENTS, {
+    ingredients: ingredients,
+    count: ingredients.length
   });
 }
 
 /**
- * Tracks user login
+ * Tracks user logins
  */
 export function trackUserLogin(method: string) {
-  trackEvent(RecipeEvents.USER_LOGIN, {
-    method
+  logAnalyticsEvent(RecipeEvents.USER_LOGIN, {
+    auth_method: method
   });
 }
 
 /**
- * Tracks user signup
+ * Tracks user signups
  */
 export function trackUserSignup(method: string) {
-  trackEvent(RecipeEvents.USER_SIGNUP, {
-    method
+  logAnalyticsEvent(RecipeEvents.USER_SIGNUP, {
+    auth_method: method
   });
 }
 
 /**
- * Tracks app performance metrics
+ * Tracks performance metrics
  */
 export function trackPerformanceMetric(metricName: string, valueMs: number) {
-  trackEvent('performance_metric', {
+  logAnalyticsEvent('performance_metric', {
     metric_name: metricName,
     value_ms: valueMs
   });
 }
+
+/**
+ * Tracks recipe ratings
+ */
+export function trackRecipeRating(recipeName: string, rating: number) {
+  logAnalyticsEvent('recipe_rating', {
+    recipe_name: recipeName,
+    rating
+  });
+}
+
+/**
+ * Tracks recipe sharing
+ */
+export function trackRecipeShare(recipeName: string, shareMethod: string) {
+  logAnalyticsEvent('recipe_share', {
+    recipe_name: recipeName,
+    share_method: shareMethod
+  });
+}
+
+/**
+ * Tracks app errors
+ */
+export function trackError(errorType: string, errorMessage: string, context?: Record<string, any>) {
+  logAnalyticsEvent(RecipeEvents.RECIPE_ERROR, {
+    error_type: errorType,
+    error_message: errorMessage,
+    ...context
+  });
+}
+
+/**
+ * Tracks recipe generation completion
+ */
+export function trackRecipeGenerationComplete(
+  ingredients: string[],
+  dietaryRestrictions: string[],
+  recipesCount: number,
+  latencyMs: number
+) {
+  logAnalyticsEvent(RecipeEvents.GENERATE_RECIPE, {
+    ingredients_count: ingredients.length,
+    ingredients: ingredients,
+    dietary_restrictions: dietaryRestrictions,
+    recipes_count: recipesCount,
+    latency_ms: latencyMs
+  });
+}
+
+// Export the logAnalyticsEvent function for direct use
+export { logAnalyticsEvent };
 
 // Dashboard query functions
 
@@ -334,7 +474,7 @@ export async function getUserEngagementMetrics() {
     
     // Return dummy data in case of error
     return {
-      totalUsers: 15487,
+      totalUsers: 12000,
       activeUsers: 8934,
       avgSessionTime: 420 // in seconds
     };
@@ -393,5 +533,95 @@ export async function getPerformanceMetrics() {
       searchLatency: 180, // ms
       errorRate: 0.4 // percent
     };
+  }
+}
+
+// Export this function to allow generating test events
+export async function generateTestEvents() {
+  try {
+    console.log('Generating test analytics events...');
+    
+    // Generate recipe view events
+    const recipes = [
+      { name: 'Vegetarian Pasta', difficulty: 'Medium', timeEstimate: 30 },
+      { name: 'Keto Chicken Bowl', difficulty: 'Easy', timeEstimate: 20 },
+      { name: 'Gluten-Free Pancakes', difficulty: 'Easy', timeEstimate: 15 },
+      { name: 'Vegan Buddha Bowl', difficulty: 'Medium', timeEstimate: 25 }
+    ];
+    
+    // Log view events for each recipe
+    for (const recipe of recipes) {
+      await logAnalyticsEvent('view_recipe', {
+        recipe_name: recipe.name,
+        difficulty: recipe.difficulty,
+        time_estimate: recipe.timeEstimate
+      });
+      console.log(`Logged view for ${recipe.name}`);
+      
+      // Add some save events (50% chance)
+      if (Math.random() > 0.5) {
+        await logAnalyticsEvent('save_recipe', {
+          recipe_name: recipe.name,
+          action: 'save',
+          difficulty: recipe.difficulty,
+          time_estimate: recipe.timeEstimate
+        });
+        console.log(`Logged save for ${recipe.name}`);
+      }
+    }
+    
+    // Add dietary preference toggles
+    const preferences = ['Vegetarian', 'Gluten-Free', 'Keto', 'Vegan', 'Low-Carb'];
+    for (const preference of preferences) {
+      await logAnalyticsEvent('dietary_toggle', {
+        preference: preference,
+        action: Math.random() > 0.3 ? 'add' : 'remove',
+        category: 'restriction'
+      });
+      console.log(`Logged dietary toggle for ${preference}`);
+    }
+    
+    // Add ingredient searches
+    const searchTerms = [
+      ['pasta', 'tomato', 'basil'],
+      ['chicken', 'rice', 'broccoli'],
+      ['flour', 'eggs', 'milk', 'sugar'],
+      ['olive oil', 'garlic', 'onion']
+    ];
+    
+    for (const ingredients of searchTerms) {
+      await logAnalyticsEvent('search_ingredients', {
+        ingredients: ingredients,
+        count: ingredients.length
+      });
+      console.log(`Logged ingredient search: ${ingredients.join(', ')}`);
+    }
+    
+    // Add screen view events
+    const screens = ['home', 'recipe_details', 'search', 'preferences', 'saved_recipes'];
+    for (const screen of screens) {
+      await logAnalyticsEvent('screen_view', {
+        screen_name: screen,
+        time_spent_ms: Math.floor(Math.random() * 60000) + 10000 // 10s to 70s
+      });
+      console.log(`Logged screen view for ${screen}`);
+    }
+    
+    // Log user login/signup
+    await logAnalyticsEvent('user_login', {
+      auth_method: 'email'
+    });
+    console.log('Logged user login');
+    
+    await logAnalyticsEvent('user_signup', {
+      auth_method: 'email'
+    });
+    console.log('Logged user signup');
+    
+    console.log('Successfully generated all test events!');
+    return true;
+  } catch (error) {
+    console.error('Error generating test events:', error);
+    return false;
   }
 } 

@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import DietaryPreferencesComponent from '../../components/DietaryPreferences';
 import { DietaryPreferences } from '../../types/dietary';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { logEvent, RecipeEvents } from '@/config/firebase';
+import { trackScreenView, logAnalyticsEvent } from '@/services/analyticsService';
 
 const DIETARY_PREFERENCES_KEY = '@dietary_preferences';
 
@@ -12,6 +12,7 @@ export default function PreferencesScreen() {
   const [preferences, setPreferences] = useState<DietaryPreferences>({
     restrictions: [],
     allergies: [],
+    preferences: []
   });
   const [screenStartTime] = useState(Date.now());
 
@@ -20,10 +21,7 @@ export default function PreferencesScreen() {
     return () => {
       // Log screen time when component unmounts
       const timeSpent = Math.round((Date.now() - screenStartTime) / 1000); // Convert to seconds
-      logEvent(RecipeEvents.SCREEN_TIME, {
-        screen: 'preferences',
-        timeSpentSeconds: timeSpent
-      });
+      trackScreenView('preferences', timeSpent);
     };
   }, [screenStartTime]);
 
@@ -43,6 +41,14 @@ export default function PreferencesScreen() {
     try {
       await AsyncStorage.setItem(DIETARY_PREFERENCES_KEY, JSON.stringify(newPreferences));
       setPreferences(newPreferences);
+      
+      // Track preference update event
+      logAnalyticsEvent('update_preferences', {
+        restrictions_count: newPreferences.restrictions.length,
+        allergies_count: newPreferences.allergies.length,
+        preferences_count: newPreferences.preferences?.length || 0
+      });
+      
       Alert.alert('Success', 'Dietary preferences updated successfully');
     } catch (error) {
       console.error('Error saving preferences:', error);
