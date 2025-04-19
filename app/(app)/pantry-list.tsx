@@ -15,6 +15,7 @@ import {
 } from '@/services/pantryservice';
 import { ThemedView } from '@/components/ThemedView';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import PremiumGuard from '@/components/premiumGuard';
 
 const defaultPantryItems = [
   'salt', 'pepper', 'olive oil', 'flour', 'sugar',
@@ -82,7 +83,8 @@ export default function PantryListScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <PremiumGuard>
+        <SafeAreaView style={styles.safeArea}>
       <ThemedView style={styles.container}>
         <ScrollView>
           {/* White box container for the pantry section */}
@@ -142,6 +144,8 @@ export default function PantryListScreen() {
         </ScrollView>
       </ThemedView>
     </SafeAreaView>
+    </PremiumGuard>
+    
   );
 }
 

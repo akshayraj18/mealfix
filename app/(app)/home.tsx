@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, TextInput, TouchableOpacity, StyleSheet, Platform, View, Animated } from 'react-native';
+import { ScrollView, TextInput, TouchableOpacity, StyleSheet, Platform, View, Animated, Switch, Text } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { auth } from '@/config/firebase';
@@ -13,6 +13,8 @@ import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { logEvent, RecipeEvents } from '@/config/firebase';
+import { usePremiumFeature } from '@/context/PremiumFeatureContext';
+
 
 const HomeScreen: React.FC = () => {
   const [ingredients, setIngredients] = useState('');
@@ -40,11 +42,13 @@ const HomeScreen: React.FC = () => {
 
   const [bounceAnim] = useState(new Animated.Value(1));
 
+  const { premiumEnabled, setPremiumEnabled } = usePremiumFeature();
+
   useEffect(() => {
     const user = auth.currentUser;
     if (user?.displayName) {
       setUsername(user.displayName); // This will now use the first name
-      console.log("Used first name")
+      //console.log("Used first name")
     } else if (user?.email) {
       // Fallback to email if displayName isn't set (for existing users)
       setUsername(user.email.split('@')[0]);
@@ -154,6 +158,20 @@ const HomeScreen: React.FC = () => {
           <View style={styles.headerContainer}>
             <ThemedText style={styles.greeting}>Hi {username}! 👋</ThemedText>
             <ThemedText style={styles.subtitle}>Let's cook something amazing today!</ThemedText>
+          </View>
+
+          <View style={styles.toggleContainer}>
+            <Text style={styles.toggleLabel}>Enable Premium Features</Text>
+            <Switch
+              value={premiumEnabled}
+              onValueChange={(value) => {
+                //console.log("Toggle changed to:", value);
+                setPremiumEnabled(value);
+              }}
+              trackColor={{ false: '#767577', true: '#FF8B8B' }}
+              thumbColor={premiumEnabled ? '#FF6B6B' : '#f4f3f4'}
+              ios_backgroundColor="#3e3e3e"
+            />
           </View>
           
           <View style={styles.searchSection}>
@@ -649,6 +667,21 @@ const styles = StyleSheet.create({
   resetFiltersText: {
     color: '#FFF',
     fontWeight: '500',
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 12,
+    marginVertical: 12,
+  },
+  toggleLabel: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: '600',
   },
 });
 
