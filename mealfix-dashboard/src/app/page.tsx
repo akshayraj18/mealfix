@@ -13,7 +13,8 @@ import {
   CakeIcon,
   UserIcon,
   ArrowTrendingUpIcon,
-  ClockIcon
+  ClockIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import { 
   getPopularRecipes, 
@@ -35,10 +36,21 @@ const navigation = [
   { name: 'Dashboard', href: '#', icon: HomeIcon, current: true },
 ];
 
+// Create a helper function to safely format dates
+const formatDate = (dateString: string | undefined | null): string => {
+  if (!dateString) return 'Unknown';
+  try {
+    return new Date(dateString).toLocaleString();
+  } catch (error) {
+    return 'Invalid Date';
+  }
+};
+
 export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [timeDisplayString, setTimeDisplayString] = useState<string>('');
   const [popularRecipes, setPopularRecipes] = useState<RecipeViewsData[]>([]);
   const [dietaryTrends, setDietaryTrends] = useState<DietaryTrendsData[]>([]);
   const [ingredientCombinations, setIngredientCombinations] = useState<IngredientCombinationData[]>([]);
@@ -47,6 +59,11 @@ export default function Dashboard() {
   const [rawEvents, setRawEvents] = useState<any[]>([]);
   const [showRawEvents, setShowRawEvents] = useState(false);
   const [readOnlyMode, setReadOnlyMode] = useState(false);
+
+  // Update the time display string whenever lastRefresh changes
+  useEffect(() => {
+    setTimeDisplayString(lastRefresh.toLocaleTimeString());
+  }, [lastRefresh]);
 
   const fetchDashboardData = async (isRefresh = false, isBrowserRefresh = false) => {
     if (isRefresh) {
@@ -199,6 +216,7 @@ export default function Dashboard() {
       {/* Main content */}
       <div className="lg:pl-64">
         <div className="sticky top-0 z-10 flex h-16 flex-shrink-0 bg-white shadow">
+          {/* Mobile sidebar button */}
           <button
             type="button"
             className="border-r border-gray-200 px-4 text-gray-500 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 lg:hidden"
@@ -211,6 +229,14 @@ export default function Dashboard() {
               <h1 className="text-2xl font-semibold text-gray-900 my-auto">Dashboard</h1>
             </div>
             <div className="flex items-center gap-4">
+              {/* Add the refresh button here */}
+              <button
+                onClick={fetchDashboardData}
+                className="p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                title="Force Refresh Data"
+              >
+                <ArrowPathIcon className="h-5 w-5" aria-hidden="true" />
+              </button>
               <button
                 onClick={toggleRawEvents}
                 className={`text-xs px-3 py-1 rounded ${showRawEvents ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'}`}
@@ -218,9 +244,9 @@ export default function Dashboard() {
                 {showRawEvents ? 'Hide Raw Data' : 'Show Raw Data'}
               </button>
               <div className="text-sm text-gray-500">
-                {readOnlyMode ? 
-                  <span className="text-amber-600 font-medium">Read-only mode active</span> : 
-                  <span>Last updated: {lastRefresh.toLocaleTimeString()}</span>
+                {readOnlyMode ?
+                  <span className="text-amber-600 font-medium">Read-only mode active</span> :
+                  <span>Last updated: {timeDisplayString || '...'}</span>
                 }
               </div>
             </div>
@@ -265,23 +291,19 @@ export default function Dashboard() {
                               </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                              {rawEvents.map((event, idx) => (
-                                <tr key={event.id || idx} className="hover:bg-gray-50">
+                              {rawEvents.map((event) => (
+                                <tr key={event.id}>
                                   <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                                    {event.event_name}
+                                    {event.eventName || event.event_name || 'N/A'}
                                   </td>
                                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                    {event.recipe_name || 
-                                     (event.parameters && event.parameters.recipe_name) || 
-                                     'N/A'}
+                                    {event.parameters?.recipe_name || event.recipeName || event.recipe_name || 'N/A'}
                                   </td>
                                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                    {typeof event.timestamp === 'string' 
-                                      ? new Date(event.timestamp).toLocaleString()
-                                      : 'Invalid Date'}
+                                    {typeof window !== 'undefined' ? formatDate(event.timestamp) : '...'}
                                   </td>
                                   <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">
-                                    {event.user_id || 'anonymous'}
+                                    {event.userId || event.user_id || 'Anonymous'}
                                   </td>
                                 </tr>
                               ))}
@@ -323,7 +345,7 @@ export default function Dashboard() {
                           <dt className="text-sm font-medium text-gray-500 truncate">Total Users</dt>
                           <dd>
                             <div className="text-lg font-medium text-gray-900">
-                              {userMetrics?.totalUsers.toLocaleString()}
+                              {userMetrics?.totalUsers || '0'}
                             </div>
                           </dd>
                         </dl>
@@ -333,14 +355,14 @@ export default function Dashboard() {
                   <div className="rounded-lg bg-white p-5 shadow">
                     <div className="flex items-center">
                       <div className="flex-shrink-0">
-                        <BookmarkIcon className="h-6 w-6 text-green-500" />
+                        <BookmarkIcon className="h-6 w-6 text-blue-500" />
                       </div>
                       <div className="ml-5 w-0 flex-1">
                         <dl>
-                          <dt className="text-sm font-medium text-gray-500 truncate">Recipes Saved Today</dt>
+                          <dt className="text-sm font-medium text-gray-500 truncate">Total Recipes Saved</dt>
                           <dd>
                             <div className="text-lg font-medium text-gray-900">
-                              {userMetrics?.recipesSavedCount.toLocaleString()}
+                              {userMetrics?.totalRecipesSaved || '0'}
                             </div>
                           </dd>
                         </dl>
@@ -357,7 +379,7 @@ export default function Dashboard() {
                           <dt className="text-sm font-medium text-gray-500 truncate">Avg. Session Time</dt>
                           <dd>
                             <div className="text-lg font-medium text-gray-900">
-                              {userMetrics?.averageSessionTime}
+                              {userMetrics?.averageSessionTime || '0'}
                             </div>
                           </dd>
                         </dl>
@@ -390,8 +412,8 @@ export default function Dashboard() {
                           {popularRecipes.map((recipe, index) => (
                             <tr key={index}>
                               <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">{recipe.recipeName}</td>
-                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{recipe.viewCount.toLocaleString()}</td>
-                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{recipe.saveCount.toLocaleString()}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{(recipe.viewCount || 0).toLocaleString()}</td>
+                              <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500">{(recipe.saveCount || 0).toLocaleString()}</td>
                             </tr>
                           ))}
                         </tbody>

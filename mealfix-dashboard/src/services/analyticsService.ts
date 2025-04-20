@@ -13,7 +13,13 @@ import {
   QueryDocumentSnapshot,
   limit as firestoreLimit,
   collectionGroup,
-  CollectionReference
+  CollectionReference,
+  doc,
+  getDoc,
+  setDoc,
+  addDoc,
+  updateDoc,
+  increment
 } from 'firebase/firestore';
 
 // Interface for recipe view analytics
@@ -43,6 +49,7 @@ export interface UserEngagementData {
   newUsers: number;
   averageSessionTime: string;
   recipesSavedCount: number;
+  totalRecipesSaved: number;
   recipesCreatedCount: number;
 }
 
@@ -423,7 +430,7 @@ export async function getPopularRecipes(limitCount = 5): Promise<RecipeViewsData
     const sortedRecipes = popularRecipes
       .sort((a, b) => b.viewCount - a.viewCount)
       .slice(0, limitCount);
-    
+      
     if (sortedRecipes.length > 0) {
       console.log(`Returning ${sortedRecipes.length} real recipe data points:`, sortedRecipes);
       // Cache the result before returning
@@ -649,7 +656,21 @@ export async function getUserEngagementMetrics(): Promise<UserEngagementData> {
   if (cachedData) return cachedData;
   
   try {
-    // Get collection references
+    // First try to get the total users from the dedicated counter
+    const userStatsRef = doc(db, 'metrics', 'userStats');
+    const userStatsDoc = await getDoc(userStatsRef);
+    
+    // Get total users from counter or initialize if it doesn't exist
+    let totalUsers = 0;
+    if (userStatsDoc.exists()) {
+      totalUsers = userStatsDoc.data().totalUsers || 0;
+      console.log(`Retrieved totalUsers (${totalUsers}) from dedicated counter document`);
+    } else {
+      // If counter doesn't exist, set up one with initial value based on unique users
+      console.log('No dedicated user counter found, will create one after calculating users');
+    }
+    
+    // Get collection references - continue with existing code for other metrics
     const eventsRef = collection(db, ANALYTICS_COLLECTION);
     
     // Get all events to extract unique users - simple query that doesn't need an index
@@ -683,6 +704,17 @@ export async function getUserEngagementMetrics(): Promise<UserEngagementData> {
     
     console.log(`USER ANALYSIS: Found ${validUserCount} events with valid userIds and ${anonymousCount} anonymous events`);
     console.log(`USER ANALYSIS: Extracted ${uniqueUsers.size} unique users from events`);
+    
+    // If counter doesn't exist, create it with current unique users count
+    if (!userStatsDoc.exists()) {
+      totalUsers = uniqueUsers.size;
+      try {
+        await setDoc(userStatsRef, { totalUsers });
+        console.log(`Created new userStats counter with totalUsers = ${totalUsers}`);
+      } catch (error) {
+        console.error('Failed to create totalUsers counter:', error);
+      }
+    }
     
     // Get a sample of user IDs for debugging
     const userIdSample = Array.from(uniqueUsers).slice(0, 5);
@@ -940,6 +972,39 @@ export async function getUserEngagementMetrics(): Promise<UserEngagementData> {
       console.log(`Found ${recipesSavedSnapshot.size} recipe save events with snake_case field`);
     }
     
+    // Filter for just today's saved recipes
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    
+    let recipesSavedCount = 0;
+    recipesSavedSnapshot.forEach(doc => {
+      const data = doc.data();
+      let timestamp = null;
+      
+      // Try to extract timestamp from various formats
+      if (data.timestamp?.toDate) {
+        timestamp = data.timestamp.toDate();
+      } else if (data.timestamp instanceof Date) {
+        timestamp = data.timestamp;
+      } else if (data.client_timestamp) {
+        timestamp = new Date(data.client_timestamp);
+      } else if (typeof data.timestamp === 'string') {
+        timestamp = new Date(data.timestamp);
+      }
+      
+      // Count only recipes saved today
+      if (timestamp && timestamp >= startOfToday) {
+        recipesSavedCount++;
+      }
+    });
+    
+    console.log(`Filtered to ${recipesSavedCount} recipes saved today (since ${startOfToday.toISOString()})`);
+    console.log(`Total recipe save events found: ${recipesSavedSnapshot.size}`);
+    
+    // Store the total recipe saves count
+    const totalRecipesSaved = recipesSavedSnapshot.size;
+    console.log(`Total recipes saved (all time): ${totalRecipesSaved}`);
+    
     // Get generated recipes count - try camelCase first
     const recipesCreatedQueryCamelCase = query(
       eventsRef,
@@ -962,20 +1027,21 @@ export async function getUserEngagementMetrics(): Promise<UserEngagementData> {
     
     // Log final metrics summary
     console.log("---------- USER METRICS SUMMARY ----------");
-    console.log(`Total unique users: ${uniqueUsers.size}`);
+    console.log(`Total unique users (from counter): ${totalUsers}`);
     console.log(`Active users (last 30 days): ${activeUsers.size}`);
     console.log(`New users (last 7 days): ${newUsers.size}`);
-    console.log(`Saved recipes: ${recipesSavedSnapshot.size}`);
+    console.log(`Saved recipes: ${recipesSavedCount}`);
     console.log(`Generated recipes: ${recipesCreatedSnapshot.size}`);
     console.log("------------------------------------------");
     
     // Return metrics with real data
     const result: UserEngagementData = {
-      totalUsers: uniqueUsers.size,
+      totalUsers,
       activeUsers: activeUsers.size,
       newUsers: newUsers.size,
       averageSessionTime,
-      recipesSavedCount: recipesSavedSnapshot.size,
+      recipesSavedCount,
+      totalRecipesSaved,
       recipesCreatedCount: recipesCreatedSnapshot.size
     };
     
@@ -992,6 +1058,7 @@ export async function getUserEngagementMetrics(): Promise<UserEngagementData> {
       newUsers: 0,
       averageSessionTime: 'Error loading data',
       recipesSavedCount: 0,
+      totalRecipesSaved: 0,
       recipesCreatedCount: 0
     };
   }
@@ -1215,5 +1282,42 @@ export async function getRawAnalyticsEvents(limitCount = 20): Promise<any[]> {
   } catch (error) {
     console.error('Error fetching raw analytics events:', error);
     return [];
+  }
+}
+
+// Add this function to handle user signup and increment the counter
+export async function trackUserSignup(userId: string, authMethod: string = 'email'): Promise<void> {
+  try {
+    // Log the signup event
+    const eventData = {
+      eventName: 'user_signup',
+      userId,
+      timestamp: new Date(),
+      parameters: {
+        auth_method: authMethod
+      }
+    };
+    
+    // Add to analytics collection
+    await addDoc(collection(db, ANALYTICS_COLLECTION), eventData);
+    console.log(`Logged signup event for user: ${userId}`);
+    
+    // Increment the total users counter
+    const userStatsRef = doc(db, 'metrics', 'userStats');
+    const userStatsDoc = await getDoc(userStatsRef);
+    
+    if (userStatsDoc.exists()) {
+      // Increment existing counter
+      await updateDoc(userStatsRef, {
+        totalUsers: increment(1)
+      });
+      console.log(`Incremented totalUsers counter for new user: ${userId}`);
+    } else {
+      // Create counter if it doesn't exist
+      await setDoc(userStatsRef, { totalUsers: 1 });
+      console.log(`Created totalUsers counter with initial value 1 for first user: ${userId}`);
+    }
+  } catch (error) {
+    console.error('Error tracking user signup:', error);
   }
 } 

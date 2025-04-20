@@ -18,18 +18,20 @@ import {
 import { Recipe } from '../types/recipe';
 import { Platform } from 'react-native';
 import * as Application from 'expo-application';
-// Add a type declaration for uuid
-// @ts-ignore
-import { v4 as uuidv4 } from 'uuid';
 
 // Collection names for analytics data
 export const ANALYTICS_EVENTS_COLLECTION = 'analytics_events';
 export const METRICS_COLLECTION = 'metrics_aggregated';
 export const USER_METRICS_COLLECTION = 'user_metrics';
 
+// Generate a simple session ID that doesn't rely on UUID
+const generateSessionId = () => {
+  return `session_${Date.now()}_${Math.random().toString(36).substring(2, 10)}`;
+};
+
 // Generate a unique session ID for this app instance
 // This will persist for the duration of the app session
-const SESSION_ID = uuidv4();
+const SESSION_ID = generateSessionId();
 
 // Get the platform
 const PLATFORM = Platform.OS;
@@ -48,12 +50,17 @@ interface AnalyticsEvent {
 // Get app version
 function getAppVersion(): string {
   try {
-    if (Platform.OS === 'ios') {
-      return Application.nativeApplicationVersion || '1.0.0';
-    } else if (Platform.OS === 'android') {
-      return Application.nativeApplicationVersion || '1.0.0';
+    // Try to use expo-application if available
+    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+      try {
+        const Application = require('expo-application');
+        return Application.nativeApplicationVersion || '1.0.0';
+      } catch (error) {
+        console.warn('expo-application not available, using default version:', error);
+        return '1.0.0'; // Default fallback
+      }
     }
-    return '1.0.0'; // Default fallback
+    return '1.0.0'; // Default for web or other platforms
   } catch (error) {
     console.error('Error getting app version:', error);
     return '1.0.0';
@@ -203,12 +210,36 @@ export function trackUserLogin(method: string) {
 }
 
 /**
- * Tracks user signups
+ * Tracks user signups and increments the dashboard counter
  */
-export function trackUserSignup(method: string) {
+export async function trackUserSignup(method: string, userId?: string) {
+  // Log the signup event in the app's analytics
   logAnalyticsEvent(RecipeEvents.USER_SIGNUP, {
-    auth_method: method
+    auth_method: method,
+    user_id: userId || getUserId()
   });
+  
+  try {
+    // Also increment the counter in the dashboard's metrics collection
+    // This helps maintain an accurate total user count for the dashboard
+    const userStatsRef = doc(db, 'metrics', 'userStats');
+    const userStatsDoc = await getDoc(userStatsRef);
+    
+    if (userStatsDoc.exists()) {
+      // Increment existing counter
+      await updateDoc(userStatsRef, {
+        totalUsers: increment(1)
+      });
+      console.log('Incremented totalUsers counter in dashboard metrics');
+    } else {
+      // Create counter if it doesn't exist
+      await setDoc(userStatsRef, { totalUsers: 1 });
+      console.log('Created new totalUsers counter in dashboard metrics with value 1');
+    }
+  } catch (error) {
+    console.error('Error incrementing user counter in dashboard:', error);
+    // The analytics event is still logged even if the counter update fails
+  }
 }
 
 /**

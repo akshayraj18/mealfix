@@ -16,6 +16,7 @@ import { updateProfile } from 'firebase/auth';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { trackUserSignup } from '../../services/analyticsService';
 
 export default function LoginScreen() {
   const [firstName, setFirstName] = useState('');
@@ -67,11 +68,15 @@ export default function LoginScreen() {
         displayName: firstName
       });
       
+      // Track the signup and increment the dashboard counter
+      await trackUserSignup('email', userCredential.user.uid);
+      console.log('Tracked signup event and incremented user counter');
+      
       if (userCredential.user) {
         console.log('User created successfully:', userCredential.user.uid);
         Alert.alert(
           '🎉 Welcome to MealFix!',
-          'Hi ${firstName}! Your account has been created successfully. Please log in to continue.',
+          `Hi ${firstName}! Your account has been created successfully. Please log in to continue.`,
           [
             {
               text: 'Continue to Login',
