@@ -123,6 +123,11 @@ export default function Dashboard() {
     setShowRawEvents(!showRawEvents);
   };
 
+  // Add a wrapper function for the onClick event handler
+  const handleRefreshClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    fetchDashboardData(true, false);
+  };
+
   useEffect(() => {
     // Log dashboard view event
     logEvent(DashboardEvents.VIEW_DASHBOARD, {
@@ -231,7 +236,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-4">
               {/* Add the refresh button here */}
               <button
-                onClick={fetchDashboardData}
+                onClick={handleRefreshClick}
                 className="p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 title="Force Refresh Data"
               >
