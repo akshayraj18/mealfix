@@ -13,15 +13,8 @@ if (Platform.OS === 'web') {
   // For web, we'll initialize analytics later to avoid import errors in SSR
   console.log('Web platform detected, analytics will be initialized at runtime');
 } else {
-  // For native platforms, import directly
-  try {
-    // We use require instead of import to avoid SSR issues
-    const analytics = require('@react-native-firebase/analytics').default;
-    analyticsInstance = analytics();
-    console.log('Firebase Analytics initialized for native');
-  } catch (error) {
-    console.error('Failed to initialize Firebase Analytics for native:', error);
-  }
+  // For native platforms, we'll initialize after app initialization
+  console.log('Native platform detected, will initialize analytics after app initialization');
 }
 
 // Your web app's Firebase configuration
@@ -60,13 +53,14 @@ if (getApps().length === 0) {
   app = getApp();
 }
 
-// Initialize Auth
+// Initialize Auth (we'll use basic auth since persistence is just a warning, not an error)
 const auth = getAuth(app);
+console.log('Firebase Auth initialized (without persistence)');
 
 // Initialize Firestore
 const db = getFirestore(app);
 
-// Initialize web analytics if on web platform
+// Initialize analytics based on platform
 if (Platform.OS === 'web') {
   try {
     // In web environments, initialize analytics if running in browser
@@ -78,6 +72,21 @@ if (Platform.OS === 'web') {
     }
   } catch (error) {
     console.error('Failed to initialize Firebase Analytics for web:', error);
+  }
+} else {
+  // For native platforms
+  try {
+    const { getAnalytics } = require('firebase/analytics');
+    analyticsInstance = getAnalytics(app);
+    console.log('Firebase Analytics initialized for native');
+  } catch (error) {
+    console.error('Failed to initialize Firebase Analytics for native:', error);
+    // Set a dummy analytics instance to prevent null errors
+    analyticsInstance = {
+      logEvent: (name: string, params: any) => {
+        console.log(`[Dummy Analytics] ${name}:`, params);
+      }
+    };
   }
 }
 
@@ -94,8 +103,13 @@ export const logEvent = async (eventName: string, params?: Record<string, any>) 
       const firebaseAnalytics = require('firebase/analytics');
       firebaseAnalytics.logEvent(analyticsInstance, eventName, params);
     } else {
-      // For native, use the react-native-firebase analytics
-      await analyticsInstance.logEvent(eventName, params);
+      try {
+        // For native, use firebase/analytics
+        const { logEvent: analyticsLogEvent } = require('firebase/analytics');
+        analyticsLogEvent(analyticsInstance, eventName, params);
+      } catch (error) {
+        console.log(`[Dummy Analytics] ${eventName}:`, params);
+      }
     }
     
     console.log(`Analytics event logged: ${eventName}`, params);
@@ -103,14 +117,6 @@ export const logEvent = async (eventName: string, params?: Record<string, any>) 
     console.error('Failed to log analytics event:', error);
   }
 };
-
-if (Platform.OS === 'web') {
-  console.log('Analytics collection enabled for web');
-} else if (analyticsInstance) {
-  analyticsInstance.setAnalyticsCollectionEnabled(true);
-  analyticsInstance.setDebugModeEnabled(__DEV__); // Only enable debug in development
-  console.log('Analytics collection and debug mode configured for native');
-}
 
 export { auth, db };
 export default app;

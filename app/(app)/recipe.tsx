@@ -8,7 +8,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import NutritionInfo from '@/components/NutritionInfo';
 import { saveRecipe, isRecipeSaved, deleteRecipe } from '@/services/savedRecipesService';
-import { logEvent, RecipeEvents } from '@/config/firebase';
+import { trackRecipeView, trackRecipeSave, trackScreenView } from '@/services/analyticsService';
 
 export default function RecipePage() {
   const params = useLocalSearchParams<{ recipe: string }>();
@@ -21,26 +21,14 @@ export default function RecipePage() {
   useEffect(() => {
     checkIfRecipeIsSaved();
     if (recipe) {
-      // Log recipe view
-      logEvent(RecipeEvents.VIEW_RECIPE, {
-        recipeName: recipe.name,
-        difficulty: recipe.difficulty,
-        timeEstimate: recipe.timeEstimate,
-        extraIngredientsCost: recipe.extraIngredientsCost,
-        totalIngredients: (recipe.currentIngredients?.length || 0) + (recipe.extraIngredients?.length || 0),
-        hasNutritionInfo: !!recipe.nutritionInfo,
-        hasDietaryInfo: !!(recipe.dietaryInfo?.restrictions?.length || recipe.dietaryInfo?.allergens?.length)
-      });
+      // Log recipe view with the new analytics service
+      trackRecipeView(recipe);
     }
 
     return () => {
-      // Log screen time when component unmounts
+      // Log screen time when component unmounts using the new analytics service
       const timeSpent = Math.round((Date.now() - screenStartTime) / 1000); // Convert to seconds
-      logEvent(RecipeEvents.SCREEN_TIME, {
-        screen: 'recipe',
-        timeSpentSeconds: timeSpent,
-        recipeName: recipe?.name
-      });
+      trackScreenView('recipe', timeSpent);
     };
   }, [recipe, screenStartTime]);
 
@@ -66,11 +54,17 @@ export default function RecipePage() {
         setIsSaved(false);
         setSavedRecipeId(null);
         Alert.alert('Success', 'Recipe removed from your saved recipes');
+        
+        // Track recipe unsave
+        trackRecipeSave(recipe, false);
       } else {
         const recipeId = await saveRecipe(recipe);
         setIsSaved(true);
         setSavedRecipeId(recipeId);
         Alert.alert('Success', 'Recipe saved to your collection!');
+        
+        // Track recipe save
+        trackRecipeSave(recipe, true);
       }
     } catch (error: any) {
       Alert.alert('Error', error.message);

@@ -46,9 +46,21 @@
     <true/>
     <key>NSAppTransportSecurity</key>
     <dict>
+      <key>NSExceptionDomains</key>
+          <dict>
+              <key>128.61.222.150</key>
+              <dict>
+                  <key>NSIncludesSubdomains</key>
+                  <true/>
+                  <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                  <true/>
+                  <key>NSExceptionRequiresForwardSecrecy</key>
+                  <false/>
+                  <key>NSExceptionMinimumTLSVersion</key>
+                  <string>TLSv1.0</string>
+              </dict>
+          </dict>
       <key>NSAllowsArbitraryLoads</key>
-      <true/>
-      <key>NSAllowsLocalNetworking</key>
       <true/>
     </dict>
     <key>UILaunchStoryboardName</key>
@@ -81,19 +93,5 @@
     <string>com.anonymous.MealFix</string>
     <key>supportsTablet</key>
     <true/>
-    <key>NSExceptionDomains</key>
-    <dict>
-        <key>128.61.222.150</key>
-        <dict>
-            <key>NSIncludesSubdomains</key>
-            <true/>
-            <key>NSExceptionAllowsInsecureHTTPLoads</key>
-            <true/>
-            <key>NSExceptionRequiresForwardSecrecy</key>
-            <false/>
-            <key>NSExceptionMinimumTLSVersion</key>
-            <string>TLSv1.0</string>
-        </dict>
-    </dict>
   </dict>
 </plist>

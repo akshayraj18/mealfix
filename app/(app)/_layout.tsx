@@ -3,10 +3,18 @@ import React, { useEffect } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useColorScheme } from 'react-native';
 import { usePremiumFeature } from '@/context/PremiumFeatureContext';
+import { logAnalyticsEvent } from '@/services/analyticsService'
 
 export default function AppLayout() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  // Track app initialization
+  useEffect(() => {
+    logAnalyticsEvent('app_initialized', {
+      color_scheme: colorScheme,
+      timestamp: new Date().toISOString()
+    });
+  }, []);
   const { premiumEnabled } = usePremiumFeature();
   const pathname = usePathname();
   const router = useRouter();
@@ -47,9 +55,7 @@ export default function AppLayout() {
         name="home"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="home" size={size} color={color} />
-          ),
+          tabBarIcon: ({ color }) => <MaterialIcons name="home" size={24} color={color} />,
         }}
       />
       

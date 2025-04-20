@@ -1,6 +1,8 @@
 PODS:
   - boost (1.84.0)
   - DoubleConversion (1.1.6)
+  - EXApplication (6.0.2):
+    - ExpoModulesCore
   - EXConstants (17.0.7):
     - ExpoModulesCore
   - EXJSONUtils (0.14.0)
@@ -1969,7 +1971,7 @@ PODS:
     - React-perflogger (= 0.76.7)
     - React-utils (= 0.76.7)
   - RecaptchaInterop (100.0.0)
-  - RNCAsyncStorage (1.24.0):
+  - RNCAsyncStorage (1.23.1):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2160,6 +2162,7 @@ PODS:
 DEPENDENCIES:
   - boost (from `../node_modules/react-native/third-party-podspecs/boost.podspec`)
   - DoubleConversion (from `../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec`)
+  - EXApplication (from `../node_modules/expo-application/ios`)
   - EXConstants (from `../node_modules/expo-constants/ios`)
   - EXJSONUtils (from `../node_modules/expo-json-utils/ios`)
   - EXManifests (from `../node_modules/expo-manifests/ios`)
@@ -2281,6 +2284,8 @@ EXTERNAL SOURCES:
     :podspec: "../node_modules/react-native/third-party-podspecs/boost.podspec"
   DoubleConversion:
     :podspec: "../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec"
+  EXApplication:
+    :path: "../node_modules/expo-application/ios"
   EXConstants:
     :path: "../node_modules/expo-constants/ios"
   EXJSONUtils:
@@ -2472,6 +2477,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   boost: 1dca942403ed9342f98334bf4c3621f011aa7946
   DoubleConversion: f16ae600a246532c4020132d54af21d0ddb2a385
+  EXApplication: 27a524f5c3e671c6218220fba04752629466a1a9
   EXConstants: 0472d3c23d97943fe3505306daf9cde8024365c2
   EXJSONUtils: 01fc7492b66c234e395dcffdd5f53439c5c29c93
   EXManifests: 77e77c283c4c53a50b9bddebed25abe93f0b48f1
@@ -2572,7 +2578,7 @@ SPEC CHECKSUMS:
   ReactCodegen: 807cff999d1705af15b99363e2cc37ca9fae4761
   ReactCommon: 043f537fa4c5366bb960a760bc626fb50c4eb84f
   RecaptchaInterop: 7d1a4a01a6b2cb1610a47ef3f85f0c411434cb21
-  RNCAsyncStorage: ed97da7a45c1af0c6a938c8b66da1ec24792fcab
+  RNCAsyncStorage: 722620dc87fb48ad321505fcfccd1782455c7448
   RNFBAnalytics: 599098014673c9968cbe417a1b4791d392ddec1c
   RNFBApp: 526e8bbb0d358b95c3068bc4c26ceb43a34f467d
   RNFBAuth: 6a452581dfe300754011203b4a10cb1d2d177b60
@@ -2582,6 +2588,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: d213adae4f2c5518e9b19f919afa25a73848ecfb
 
-PODFILE CHECKSUM: fd4222f30e27a56912d80077164233bea650c059
+PODFILE CHECKSUM: 76123858e0a73c14882a5c6441da2e596bb22c80
 
 COCOAPODS: 1.14.3
