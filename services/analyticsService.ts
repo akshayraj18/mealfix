@@ -78,9 +78,12 @@ function getUserId(): string {
  * queryable data for the dashboard
  */
 async function logAnalyticsEvent(eventName: string, parameters: Record<string, any> = {}) {
+  console.log(`Attempting to log event ${eventName} with parameters:`, parameters);
+  
   try {
     // 1. Log to Firebase Analytics using the existing helper
     await logEvent(eventName, parameters);
+    console.log(`Successfully logged ${eventName} to Firebase Analytics`);
     
     // 2. Log to Firestore for dashboard queries
     const userId = getUserId();
@@ -106,16 +109,23 @@ async function logAnalyticsEvent(eventName: string, parameters: Record<string, a
     };
     
     // Add the event to Firestore
-    await addDoc(collection(db, ANALYTICS_EVENTS_COLLECTION), eventData);
-    
-    console.log(`Event ${eventName} logged to both Analytics and Firestore`);
-    return true;
+    try {
+      const docRef = await addDoc(collection(db, ANALYTICS_EVENTS_COLLECTION), eventData);
+      console.log(`Event ${eventName} logged to Firestore with ID: ${docRef.id}`);
+      return true;
+    } catch (firestoreError) {
+      console.error('Firestore specific error:', firestoreError);
+      throw firestoreError; // Re-throw to be caught by outer catch
+    }
   } catch (error) {
-    console.error('Failed to log analytics event:', error);
+    console.error(`Failed to log analytics event ${eventName}:`, error);
     // Still try to log to Firebase Analytics directly as fallback
-    logEvent(eventName, parameters).catch(err => {
-      console.error('Failed to log fallback analytics event:', err);
-    });
+    try {
+      await logEvent(eventName, parameters);
+      console.log(`Fallback: Logged ${eventName} to Firebase Analytics only`);
+    } catch (fallbackError) {
+      console.error('Failed even fallback analytics logging:', fallbackError);
+    }
     return false;
   }
 }
@@ -133,6 +143,61 @@ export function trackRecipeView(recipe: Recipe) {
     has_nutrition_info: !!recipe.nutritionInfo,
     has_dietary_info: !!(recipe.dietaryInfo?.restrictions?.length || recipe.dietaryInfo?.allergens?.length)
   });
+  
+  // Track ingredient substitutions if found in recipe ingredients
+  trackIngredientSubstitutions(recipe);
+}
+
+/**
+ * Tracks ingredient substitutions from recipes
+ * This helps populate the common substitution data in the dashboard
+ */
+export function trackIngredientSubstitutions(recipe: Recipe) {
+  try {
+    // Look for substitution patterns in ingredients - typically in format "ingredient (or substitute)"
+    const substitutionPattern = /(.+)\s+\((?:or|substitute:)\s+(.+?)(?:\s+for\s+.*?)?\)/i;
+    let substitutions: { original: string, substitute: string }[] = [];
+    
+    // Check current ingredients for substitutions
+    if (recipe.currentIngredients && recipe.currentIngredients.length > 0) {
+      recipe.currentIngredients.forEach(ingredient => {
+        const match = ingredient.match(substitutionPattern);
+        if (match) {
+          const original = match[1].trim();
+          const substitute = match[2].trim();
+          substitutions.push({ original, substitute });
+        }
+      });
+    }
+    
+    // Also check extra ingredients descriptions for substitutions
+    if (recipe.extraIngredients && recipe.extraIngredients.length > 0) {
+      recipe.extraIngredients.forEach(ingredientObj => {
+        const ingredient = ingredientObj.item;
+        const match = ingredient.match(substitutionPattern);
+        if (match) {
+          const original = match[1].trim();
+          const substitute = match[2].trim();
+          substitutions.push({ original, substitute });
+        }
+      });
+    }
+    
+    // If substitutions found, log them as events
+    if (substitutions.length > 0) {
+      console.log(`Found ${substitutions.length} ingredient substitutions in recipe`);
+      substitutions.forEach(sub => {
+        logAnalyticsEvent('ingredient_substitution', {
+          original_ingredient: sub.original,
+          substitute_ingredient: sub.substitute,
+          recipe_name: recipe.name,
+          combination: `${sub.original} ⟶ ${sub.substitute}`
+        });
+      });
+    }
+  } catch (error) {
+    console.error('Error tracking ingredient substitutions:', error);
+  }
 }
 
 /**
@@ -194,10 +259,41 @@ export function trackScreenView(screenName: string, timeSpentMs: number) {
  * Tracks ingredient searches
  */
 export function trackIngredientSearch(ingredients: string[]) {
+  if (!ingredients || ingredients.length === 0) {
+    console.warn('Attempted to track ingredient search with empty ingredients list');
+    return;
+  }
+  
+  console.log(`Tracking search for ${ingredients.length} ingredients:`, ingredients);
+  
+  // Log the search event with ingredients array
   logAnalyticsEvent(RecipeEvents.SEARCH_INGREDIENTS, {
     ingredients: ingredients,
     count: ingredients.length
   });
+  
+  // For combinations tracking, also log individual pairs if there are multiple ingredients
+  if (ingredients.length > 1) {
+    console.log(`Will generate ${(ingredients.length * (ingredients.length - 1)) / 2} ingredient combinations`);
+    
+    // Sort ingredients to normalize combinations
+    const sortedIngredients = [...ingredients].sort();
+    
+    // Create combinations of 2 ingredients for easier analytics tracking
+    for (let i = 0; i < sortedIngredients.length - 1; i++) {
+      for (let j = i + 1; j < sortedIngredients.length; j++) {
+        // Log each pair as a separate event for more granular tracking
+        const combination = `${sortedIngredients[i]} + ${sortedIngredients[j]}`;
+        console.log(`Logging combination: ${combination}`);
+        
+        // Log a dedicated event for each combination
+        logAnalyticsEvent('ingredient_combination', {
+          ingredients: [sortedIngredients[i], sortedIngredients[j]],
+          combination: combination
+        });
+      }
+    }
+  }
 }
 
 /**
@@ -292,6 +388,7 @@ export function trackRecipeGenerationComplete(
   recipesCount: number,
   latencyMs: number
 ) {
+  // First log the recipe generation event
   logAnalyticsEvent(RecipeEvents.GENERATE_RECIPE, {
     ingredients_count: ingredients.length,
     ingredients: ingredients,

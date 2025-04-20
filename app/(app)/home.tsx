@@ -14,6 +14,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { logEvent, RecipeEvents } from '@/config/firebase';
 import { usePremiumFeature } from '@/context/PremiumFeatureContext';
+import { trackIngredientSearch } from '@/services/analyticsService';
 
 
 const HomeScreen: React.FC = () => {
@@ -90,6 +91,13 @@ const HomeScreen: React.FC = () => {
 
     setIsLoading(true);
     setError(null);
+
+    const ingredientsList = ingredients.split(',').map(ingredient => ingredient.trim()).filter(Boolean);
+    
+    // Track ingredient search event for analytics
+    if (ingredientsList.length > 0) {
+      trackIngredientSearch(ingredientsList);
+    }
 
     try {
       const result = await generateRecipeSuggestions(ingredients, dietaryPreferences);
